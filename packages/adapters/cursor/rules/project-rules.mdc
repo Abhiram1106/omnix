@@ -1,0 +1,47 @@
+---
+description: omnix universal project rules
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# Project Rules (omnix)
+
+## Startup protocol (runs before every response)
+
+Follow `packages/adapters/generic/STARTUP_PROTOCOL.md`:
+
+1. Detect Omnix Runtime markers (`.obsidian-ai-memory/`, `AGENTS.md`, etc.).
+2. Identify project type and stack from manifests.
+3. Retrieve relevant Obsidian memory (balanced mode by default — see `standards/context-engineering.md`).
+4. Auto-route to workflow based on request signals.
+5. Activate required agent roles (multi-role for cross-cutting tasks).
+6. Emit compact startup block, then work.
+
+> "The user gives a goal. The Omnix Runtime determines workflow, agents, context, checks, and memory updates."
+
+## Memory loop (mandatory)
+
+Before answering or editing, read from `.obsidian-ai-memory/`:
+- `02-PROJECTS/project-context.md`
+- last 3-5 in `01-SESSIONS/YYYY-MM-DD/`
+- `03-ERRORS/error-memory.md`
+- `04-DECISIONS/decisions.md`
+- `07-LESSONS/lessons-learned.md`
+
+After meaningful work, write a session digest at `01-SESSIONS/YYYY-MM-DD/session-HHMM-cursor.md`.
+
+> Every interaction ends with a digest unless I say otherwise.
+> Every fixed error becomes a prevention rule in `03-ERRORS/`.
+
+## Engineering rules (apply universally)
+
+- Follow existing project conventions.
+- Never repeat known errors. Check `03-ERRORS/` first.
+- Ask before destructive commands.
+- Never expose secrets.
+- Verify (typecheck/tests/build) before claiming completion.
+- Prefer small safe changes.
+- Record assumptions and open questions in the digest.
+
+See `packages/core/standards/ai-collaboration.md` and `packages/adapters/generic/AGENTS.md` for the full loop.

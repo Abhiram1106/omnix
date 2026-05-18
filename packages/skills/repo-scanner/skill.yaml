@@ -1,0 +1,32 @@
+name: repo-scanner
+description: |
+  Deep project scan beyond manifest detection. Maps modules, finds entry points, identifies hot paths from git churn.
+version: 0.1.0
+status: SPEC
+category: context
+risk_level: low
+triggers:
+  - scan repo
+  - map modules
+  - deep scan
+reads_memory:
+  []
+writes_memory:
+  - 05-ARCHITECTURE/module-map.md
+tools_needed:
+  - fs
+output_contract:
+  type: file-write
+verification_steps:
+  - "Top-level modules enumerated"
+  - "Entry points identified (bin/, main.*, index.*)"
+  - "Test coverage detected per module"
+  - "Top 20 files by git churn listed"
+  - "Output file under 200 lines"
+compatible_adapters:
+  - claude-code
+  - cursor
+  - aider
+  - generic
+maintainer: omnix-core
+license: MIT

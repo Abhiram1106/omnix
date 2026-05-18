@@ -1,0 +1,23 @@
+---
+description: Backend rules
+globs:
+  - "**/api/**"
+  - "**/server/**"
+  - "**/routes/**"
+  - "**/handlers/**"
+  - "**/*.controller.*"
+  - "**/services/**"
+alwaysApply: false
+---
+
+# Backend rules
+
+See `packages/core/standards/backend.md` and `api.md`.
+
+Highlights:
+- Validate input at the boundary; translate to domain types.
+- Auth/authz on every endpoint.
+- Structured logs with request IDs.
+- Idempotent writes; `Idempotency-Key` header.
+- Errors typed, mapped at the edge, never leak stack traces to clients.
+- Health endpoints: `/healthz`, `/readyz`.

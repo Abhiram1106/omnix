@@ -1,0 +1,33 @@
+name: security-threat-modeler
+description: |
+  Applies STRIDE threat modeling to a feature or architecture description. Surfaces threats and mitigations.
+version: 0.1.0
+status: SPEC
+category: review
+risk_level: low
+triggers:
+  - threat model
+  - security review
+  - stride
+  - what could go wrong
+reads_memory:
+  - 03-ERRORS/anti-patterns.md (security area)
+writes_memory:
+  - 04-DECISIONS/decisions.md (on architectural mitigation)
+tools_needed:
+  - fs
+output_contract:
+  type: report
+verification_steps:
+  - "All 6 STRIDE categories applied"
+  - "Each threat has at least one mitigation"
+  - "Mitigations reference existing project standards where possible"
+  - "OWASP Top 10 checklist applied if web feature"
+  - "Output ranks threats by severity"
+compatible_adapters:
+  - claude-code
+  - cursor
+  - aider
+  - generic
+maintainer: omnix-core
+license: MIT

@@ -1,0 +1,32 @@
+name: adapter-compatibility-tester
+description: |
+  Verifies each adapter file matches the current upstream tool spec. Flags drift before users encounter it.
+version: 0.1.0
+status: SPEC
+category: safety
+risk_level: low
+triggers:
+  - check adapters
+  - adapter test
+  - is my CLAUDE.md valid
+reads_memory:
+  []
+writes_memory:
+  []
+tools_needed:
+  - fs
+output_contract:
+  type: report
+verification_steps:
+  - "Each adapter file present"
+  - "Required sections present (per upstream spec)"
+  - "No deprecated syntax"
+  - "References to STARTUP_PROTOCOL.md and AGENTS.md present"
+  - "Filename matches current upstream convention"
+compatible_adapters:
+  - claude-code
+  - cursor
+  - aider
+  - generic
+maintainer: omnix-core
+license: MIT

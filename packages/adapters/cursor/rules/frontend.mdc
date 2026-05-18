@@ -1,0 +1,23 @@
+---
+description: Frontend rules
+globs:
+  - "**/*.tsx"
+  - "**/*.jsx"
+  - "**/*.vue"
+  - "**/*.svelte"
+  - "src/app/**"
+  - "src/components/**"
+alwaysApply: false
+---
+
+# Frontend rules
+
+See `packages/core/standards/frontend.md`.
+
+Highlights:
+- One state library; no mixing.
+- Components typed, single responsibility, one per file.
+- Accessibility: keyboard reachable, labels, contrast.
+- Server vs client components is intentional, not accidental.
+- Lazy-load above the smallest viable shell.
+- Measure before optimizing.

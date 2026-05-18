@@ -1,0 +1,81 @@
+{
+  "name": "omnix",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Omnix — AI engineering scaffolding and convention system. Install AI tool adapters, Obsidian memory vault, agents, workflows, and context engineering into any project.",
+  "license": "MIT",
+  "author": "Abhiram J <abhiram.j2006@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Abhiram1106/omnix.git"
+  },
+  "homepage": "https://github.com/Abhiram1106/omnix#readme",
+  "bugs": {
+    "url": "https://github.com/Abhiram1106/omnix/issues"
+  },
+  "keywords": [
+    "omnix",
+    "ai",
+    "cli",
+    "claude",
+    "cursor",
+    "windsurf",
+    "cline",
+    "aider",
+    "openhands",
+    "agent",
+    "workflow",
+    "obsidian",
+    "memory",
+    "context-engineering",
+    "ai-engineering",
+    "developer-tools",
+    "scaffolding",
+    "orchestration"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "./dist/index.js",
+  "bin": {
+    "omnix": "./bin/omnix.js",
+    "create-omnix": "./bin/omnix.js"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "templates",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "start": "node ./dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "clean": "rm -rf dist",
+    "publish:dry": "npm publish --dry-run",
+    "prepublishOnly": "pnpm run build && pnpm run typecheck"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "fast-glob": "^3.3.2",
+    "fs-extra": "^11.2.0",
+    "picocolors": "^1.1.1",
+    "prompts": "^2.4.2"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^20.0.0",
+    "@types/prompts": "^2.4.9",
+    "tsup": "^8.3.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}

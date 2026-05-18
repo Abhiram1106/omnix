@@ -1,0 +1,34 @@
+name: error-intelligence
+description: |
+  Matches new errors against past entries in error-memory. Finds similar root causes and known fixes.
+version: 0.1.0
+status: SPEC
+category: memory
+risk_level: low
+triggers:
+  - error
+  - exception
+  - stack trace
+  - did we see this before
+reads_memory:
+  - 03-ERRORS/INDEX.md
+  - 03-ERRORS/error-memory.md
+  - 03-ERRORS/anti-patterns.md
+writes_memory:
+  - 03-ERRORS/error-memory.md (on new fix)
+tools_needed:
+  - fs
+output_contract:
+  type: report
+verification_steps:
+  - "Normalizes error (strips paths, line numbers, IDs)"
+  - "Searches index first, full entries second"
+  - "Returns top-3 matches with confidence"
+  - "Suggests writing new entry if no match"
+compatible_adapters:
+  - claude-code
+  - cursor
+  - aider
+  - generic
+maintainer: omnix-core
+license: MIT

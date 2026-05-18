@@ -1,0 +1,61 @@
+name: Omnix — publish dry-run
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  dry-run:
+    name: Typecheck, build, and pack dry-run
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
+
+      - name: Pack dry-run (verify package contents)
+        working-directory: apps/cli
+        run: npm pack --dry-run
+
+      - name: Verify shebang in bin/omnix.js
+        working-directory: apps/cli
+        run: |
+          head -1 bin/omnix.js | grep -q '#!/usr/bin/env node' \
+            && echo "✓ shebang present" \
+            || (echo "✗ shebang missing in bin/omnix.js" && exit 1)
+
+      - name: Verify templates bundled
+        working-directory: apps/cli
+        run: |
+          test -d templates/adapters && echo "✓ templates/adapters present" || (echo "✗ missing" && exit 1)
+          test -d templates/vault    && echo "✓ templates/vault present"    || (echo "✗ missing" && exit 1)
+
+      - name: Smoke test — omnix --help
+        working-directory: apps/cli
+        run: node bin/omnix.js --help
+
+      - name: Smoke test — omnix route
+        working-directory: apps/cli
+        run: node bin/omnix.js route "fix the broken login page" --json

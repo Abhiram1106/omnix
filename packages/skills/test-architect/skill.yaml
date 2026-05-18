@@ -1,0 +1,32 @@
+name: test-architect
+description: |
+  Generates test scaffolds matching project conventions and identifies coverage gaps for new code.
+version: 0.1.0
+status: SPEC
+category: review
+risk_level: low
+triggers:
+  - add tests
+  - missing tests
+  - test coverage
+  - what tests do I need
+reads_memory:
+  - 04-DECISIONS/decisions.md (test strategy area)
+writes_memory:
+  []
+tools_needed:
+  - fs
+output_contract:
+  type: report
+verification_steps:
+  - "Detects test runner from package.json / pyproject.toml"
+  - "Looks at existing tests for pattern (naming, structure)"
+  - "Suggests test cases by category: happy path, error path, edge cases, regression"
+  - "Output includes scaffold code in detected style"
+compatible_adapters:
+  - claude-code
+  - cursor
+  - aider
+  - generic
+maintainer: omnix-core
+license: MIT

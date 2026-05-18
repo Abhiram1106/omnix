@@ -1,0 +1,31 @@
+name: token-optimizer
+description: |
+  Measures vault size, identifies oversized files, suggests compression. Enforces retrieval budgets.
+version: 0.1.0
+status: SPEC
+category: memory
+risk_level: low
+triggers:
+  - optimize tokens
+  - vault too big
+  - compress memory
+reads_memory:
+  - all vault files
+writes_memory:
+  []
+tools_needed:
+  - fs
+output_contract:
+  type: report
+verification_steps:
+  - "Reports total vault size in tokens"
+  - "Lists files exceeding 500 lines"
+  - "Suggests compression candidates with rationale"
+  - "Does not modify files (read-only)"
+compatible_adapters:
+  - claude-code
+  - cursor
+  - aider
+  - generic
+maintainer: omnix-core
+license: MIT

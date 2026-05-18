@@ -1,0 +1,32 @@
+name: memory-curator
+description: |
+  Sanitizes secrets, deduplicates entries, marks stale entries, surfaces conflicts. Memory hygiene maintenance.
+version: 0.1.0
+status: SPEC
+category: safety
+risk_level: medium
+triggers:
+  - clean memory
+  - sanitize vault
+  - remove duplicates
+reads_memory:
+  - all vault files
+writes_memory:
+  - all vault files (in-place edits with backup)
+tools_needed:
+  - fs
+output_contract:
+  type: report
+verification_steps:
+  - "All known secret patterns scanned"
+  - "Redactions applied or flagged"
+  - "Duplicates identified by content hash"
+  - "Stale entries marked last-verified-needed"
+  - "Backup created before in-place edits"
+compatible_adapters:
+  - claude-code
+  - cursor
+  - aider
+  - generic
+maintainer: omnix-core
+license: MIT

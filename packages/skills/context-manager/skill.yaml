@@ -1,0 +1,37 @@
+name: context-manager
+description: |
+  Decides what memory to load before the AI acts. Produces a context pack bounded by a token budget. Implements retrieval-policy.
+version: 0.1.0
+status: SPEC
+category: memory
+risk_level: low
+triggers:
+  - load context
+  - context retrieval
+  - what should I read first
+reads_memory:
+  - 02-PROJECTS/active-context.md
+  - 02-PROJECTS/project-context.md
+  - 02-PROJECTS/active-goals.md
+  - 03-ERRORS/INDEX.md
+  - 04-DECISIONS/INDEX.md
+  - 01-SESSIONS/(recent)
+writes_memory:
+  []
+tools_needed:
+  - fs
+output_contract:
+  type: context-pack
+verification_steps:
+  - "Pack stays under declared token budget"
+  - "All listed files exist"
+  - "No duplicate file paths"
+  - "Date-stale files marked"
+  - "active-context.md is always included"
+compatible_adapters:
+  - claude-code
+  - cursor
+  - aider
+  - generic
+maintainer: omnix-core
+license: MIT

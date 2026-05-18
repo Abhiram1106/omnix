@@ -1,0 +1,21 @@
+---
+description: Security rules
+globs:
+  - "**/auth/**"
+  - "**/security/**"
+  - "**/middleware/**"
+  - "**/*.env*"
+alwaysApply: false
+---
+
+# Security rules
+
+See `packages/core/standards/security.md`.
+
+Highlights:
+- Never commit secrets. Rotate any secret that touched the repo.
+- Validate every input with a schema; reject unknown fields.
+- Parameterized queries always.
+- Auth/authz on every endpoint, not only at the gateway.
+- CSRF, CSP, security headers configured.
+- Mask PII in logs.

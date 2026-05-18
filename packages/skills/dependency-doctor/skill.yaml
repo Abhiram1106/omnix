@@ -1,0 +1,32 @@
+name: dependency-doctor
+description: |
+  Audits package manifests for outdated, vulnerable, or redundant dependencies. Suggests safe upgrades.
+version: 0.1.0
+status: SPEC
+category: scan
+risk_level: low
+triggers:
+  - deps audit
+  - outdated
+  - vulnerabilities
+reads_memory:
+  []
+writes_memory:
+  []
+tools_needed:
+  - fs
+output_contract:
+  type: report
+verification_steps:
+  - "Reads package.json / pyproject.toml / go.mod / Cargo.toml"
+  - "Cross-references with known vulnerability data"
+  - "Flags major version drift"
+  - "Identifies redundant deps (e.g. lodash + utility library)"
+  - "Suggests upgrade order based on dependency graph"
+compatible_adapters:
+  - claude-code
+  - cursor
+  - aider
+  - generic
+maintainer: omnix-core
+license: MIT

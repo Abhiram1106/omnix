@@ -1,0 +1,32 @@
+{
+  "name": "omnix",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Omnix — universal AI engineering runtime and orchestration system for modern software development.",
+  "license": "MIT",
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=18",
+    "pnpm": ">=9"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "tools/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean",
+    "test": "turbo run test",
+    "publish:dry": "pnpm --filter omnix run publish:dry",
+    "pack:dry": "pnpm --filter omnix pack --dry-run",
+    "cli": "pnpm --filter omnix run dev"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.5.0"
+  }
+}

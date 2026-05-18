@@ -1,0 +1,20 @@
+---
+description: Testing rules
+globs:
+  - "**/*.test.*"
+  - "**/*.spec.*"
+  - "tests/**"
+  - "__tests__/**"
+alwaysApply: false
+---
+
+# Testing rules
+
+See `packages/core/standards/testing.md`.
+
+Highlights:
+- Name tests by behavior, not implementation.
+- One reason to fail per test.
+- Mock at boundaries; fakes over mocks for repositories.
+- Every bug fix gets a regression test.
+- Flakes are bugs — fix or quarantine, never retry-until-green.

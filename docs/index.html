@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Omnix — Context-Aware AI Engineering Runtime</title>
+  <meta name="description" content="Omnix gives every AI coding tool a persistent memory vault, 22 CLI commands, and 10 live skill engines. Memory-first. Tool-agnostic."/>
+
+  <style>
+    /* ═══════════════════════════════════════════
+       RESET + TOKENS
+    ═══════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #080810;
+      --bg1:      #0d0d1a;
+      --bg2:      #111122;
+      --bg3:      #16162c;
+      --bg4:      #1a1a32;
+      --border:   #1e1e38;
+      --border2:  #28284a;
+      --text:     #ddddf0;
+      --muted:    #6868a0;
+      --dim:      #38385a;
+      --accent:   #6c63ff;
+      --a-dim:    rgba(108,99,255,.12);
+      --a-border: rgba(108,99,255,.3);
+      --cyan:     #06b6d4;
+      --c-dim:    rgba(6,182,212,.1);
+      --green:    #10b981;
+      --g-dim:    #052e1a;
+      --yellow:   #f59e0b;
+      --y-dim:    rgba(245,158,11,.1);
+      --red:      #ef4444;
+      --r-dim:    rgba(239,68,68,.1);
+      --glow:     rgba(108,99,255,.18);
+      --mono:     'SF Mono','Fira Code','Cascadia Code',Menlo,Consolas,monospace;
+      --sans:     -apple-system,BlinkMacSystemFont,'Inter','Segoe UI',Helvetica,sans-serif;
+      --sidebar-w: 260px;
+      --topbar-h:  56px;
+    }
+
+    html { scroll-behavior: smooth; font-size: 15px; }
+    body { font-family: var(--sans); background: var(--bg); color: var(--text); line-height: 1.65; overflow-x: hidden; }
+    a { color: var(--cyan); text-decoration: none; transition: color .15s; }
+    a:hover { color: #fff; }
+    ::selection { background: rgba(108,99,255,.35); color: #fff; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+    /* ═══════════════════════════════════════════
+       GRID OVERLAY
+    ═══════════════════════════════════════════ */
+    body::before {
+      content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image:
+        linear-gradient(rgba(108,99,255,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(108,99,255,.04) 1px, transparent 1px);
+      background-size: 64px 64px;
+    }
+
+    /* ═══════════════════════════════════════════
+       TOP NAV
+    ═══════════════════════════════════════════ */
+    #topbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      height: var(--topbar-h);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px 0 16px;
+      background: rgba(8,8,16,.92); backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .topbar-left { display: flex; align-items: center; gap: 12px; }
+    .hamburger {
+      display: none; flex-direction: column; gap: 5px; cursor: pointer;
+      padding: 6px; background: none; border: none;
+    }
+    .hamburger span { display: block; width: 20px; height: 2px; background: var(--muted); border-radius: 2px; transition: all .2s; }
+    .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; color: var(--text); }
+    .brand-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: blink 2.5s ease-in-out infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .brand-v { font-size: 11px; padding: 2px 7px; border-radius: 4px; background: var(--a-dim); color: var(--accent); border: 1px solid var(--a-border); font-weight: 600; letter-spacing: .4px; }
+
+    .topbar-center { display: flex; align-items: center; gap: 6px; }
+    .topbar-center a { font-size: 13px; color: var(--muted); padding: 5px 10px; border-radius: 6px; transition: all .15s; }
+    .topbar-center a:hover { color: var(--text); background: var(--bg2); }
+    .topbar-center a.active { color: var(--text); }
+
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+    .topbar-right a { font-size: 13px; color: var(--muted); transition: color .15s; }
+    .topbar-right a:hover { color: var(--text); }
+    .btn-install {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 16px; border-radius: 7px; font-size: 13px; font-weight: 600;
+      background: var(--accent); color: #fff; transition: all .15s;
+    }
+    .btn-install:hover { background: #7c74ff; color: #fff; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(108,99,255,.4); }
+
+    /* ═══════════════════════════════════════════
+       DOCS LAYOUT: SIDEBAR + MAIN
+    ═══════════════════════════════════════════ */
+    #docs-layout {
+      display: flex;
+      padding-top: var(--topbar-h);
+      min-height: 100vh;
+    }
+
+    /* LEFT SIDEBAR */
+    #sidebar {
+      position: fixed; top: var(--topbar-h); left: 0; bottom: 0;
+      width: var(--sidebar-w);
+      background: var(--bg1); border-right: 1px solid var(--border);
+      overflow-y: auto; z-index: 150;
+      padding: 20px 0 40px;
+      display: flex; flex-direction: column; gap: 0;
+      transition: transform .25s;
+    }
+    .sidebar-section { margin-bottom: 4px; }
+    .sidebar-group-label {
+      font-size: 10.5px; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--dim);
+      padding: 14px 20px 6px;
+    }
+    .sidebar-link {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 20px; font-size: 13.5px; color: var(--muted);
+      transition: all .15s; cursor: pointer; border-left: 2px solid transparent;
+    }
+    .sidebar-link:hover { color: var(--text); background: var(--bg2); border-left-color: var(--border2); }
+    .sidebar-link.active { color: var(--text); background: var(--a-dim); border-left-color: var(--accent); font-weight: 500; }
+    .sidebar-link .si { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
+    .sidebar-link .sl { flex: 1; }
+    .sidebar-badge { font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 600; }
+    .sb-live { background: var(--g-dim); color: var(--green); }
+    .sb-new  { background: var(--a-dim); color: var(--accent); }
+
+    /* MAIN CONTENT */
+    #main {
+      flex: 1;
+      margin-left: var(--sidebar-w);
+      min-width: 0;
+      position: relative; z-index: 1;
+    }
+
+    /* ═══════════════════════════════════════════
+       CONTENT SECTIONS
+    ═══════════════════════════════════════════ */
+    .doc-section {
+      padding: 80px clamp(24px,5vw,80px);
+      border-bottom: 1px solid var(--border);
+      max-width: 860px;
+    }
+    .doc-section:last-child { border-bottom: none; }
+    .doc-section.wide { max-width: 1100px; }
+    .doc-section.hero-section { max-width: none; padding: 80px clamp(24px,5vw,80px) 60px; }
+
+    .section-tag {
+      display: inline-block; font-size: 10.5px; font-weight: 700;
+      letter-spacing: 1.8px; text-transform: uppercase;
+      color: var(--cyan); padding: 3px 10px; border-radius: 4px;
+      border: 1px solid rgba(6,182,212,.2); background: var(--c-dim);
+      margin-bottom: 16px;
+    }
+    h1 { font-size: clamp(32px,4.5vw,52px); font-weight: 800; letter-spacing: -1.5px; line-height: 1.08; margin-bottom: 20px; }
+    h2 { font-size: clamp(22px,3vw,34px); font-weight: 800; letter-spacing: -1px; line-height: 1.1; margin-bottom: 16px; color: #fff; }
+    h3 { font-size: 17px; font-weight: 700; margin-bottom: 10px; color: var(--text); }
+    h4 { font-size: 14px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+    p { color: var(--muted); margin-bottom: 16px; line-height: 1.75; }
+    p strong { color: var(--text); }
+    ul, ol { margin: 12px 0 16px 20px; }
+    li { color: var(--muted); margin-bottom: 6px; line-height: 1.65; }
+    li strong { color: var(--text); }
+
+    .grad { background: linear-gradient(135deg, #fff 20%, var(--accent) 60%, var(--cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hero-lead { font-size: clamp(16px,2vw,19px); color: var(--muted); max-width: 620px; line-height: 1.7; margin-bottom: 36px; }
+
+    /* ═══════════════════════════════════════════
+       CODE / TERMINAL
+    ═══════════════════════════════════════════ */
+    pre, code { font-family: var(--mono); }
+    :not(pre) > code {
+      background: var(--bg3); border: 1px solid var(--border2);
+      padding: 2px 7px; border-radius: 4px; font-size: 12.5px; color: var(--cyan);
+    }
+    pre {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 18px 20px; overflow-x: auto;
+      font-size: 13px; line-height: 1.8; margin: 16px 0;
+    }
+    .c { color: var(--dim); }         /* comment */
+    .k { color: var(--accent); }      /* keyword/flag */
+    .s { color: var(--green); }       /* string/cmd */
+    .o { color: var(--muted); }       /* output */
+    .w { color: var(--yellow); }      /* warning */
+    .e { color: var(--green); font-weight: 500; } /* success */
+
+    .terminal {
+      border-radius: 12px; overflow: hidden;
+      border: 1px solid var(--border2);
+      box-shadow: 0 32px 64px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.03), 0 0 50px var(--glow);
+      margin: 24px 0;
+    }
+    .t-bar {
+      display: flex; align-items: center; gap: 6px;
+      padding: 11px 16px; background: var(--bg3); border-bottom: 1px solid var(--border);
+    }
+    .td { width: 12px; height: 12px; border-radius: 50%; }
+    .td-r{background:#ff5f57}.td-y{background:#ffbd2e}.td-g{background:#27c93f}
+    .t-title { flex: 1; text-align: center; font-family: var(--mono); font-size: 12px; color: var(--dim); }
+    .t-body { padding: 18px 22px; font-family: var(--mono); font-size: 13px; line-height: 1.9; }
+    .t-p { color: var(--dim); user-select: none; } /* prompt $ */
+
+    /* ═══════════════════════════════════════════
+       HERO PILLS + CTA
+    ═══════════════════════════════════════════ */
+    .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 32px; }
+    .pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 100px; font-size: 12.5px; font-weight: 500; border: 1px solid var(--border2); background: var(--bg2); color: var(--muted); }
+    .pill-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+    .cta-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 48px; }
+    .btn { display: inline-flex; align-items: center; gap: 7px; padding: 11px 22px; border-radius: 8px; font-size: 14px; font-weight: 600; transition: all .2s; }
+    .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 0 28px rgba(108,99,255,.3); }
+    .btn-primary:hover { background: #7c74ff; color: #fff; transform: translateY(-1px); box-shadow: 0 0 40px rgba(108,99,255,.5); }
+    .btn-outline { border: 1px solid var(--border2); color: var(--text); }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+    .install-row { display: flex; align-items: center; gap: 12px; background: var(--bg2); border: 1px solid var(--border2); border-radius: 9px; padding: 12px 18px; max-width: 380px; font-family: var(--mono); font-size: 14px; }
+    .install-cmd { color: var(--green); flex: 1; }
+    .copy-btn { background: var(--bg3); border: 1px solid var(--border2); border-radius: 5px; padding: 4px 10px; font-size: 11px; color: var(--muted); cursor: pointer; font-family: var(--sans); transition: all .15s; }
+    .copy-btn:hover { border-color: var(--accent); color: var(--text); }
+
+    /* ═══════════════════════════════════════════
+       STATS BAR
+    ═══════════════════════════════════════════ */
+    .stats-bar { display: flex; flex-wrap: wrap; gap: 0; margin: 48px 0 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .stat { flex: 1; min-width: 100px; padding: 16px 20px; text-align: center; border-right: 1px solid var(--border); background: var(--bg1); }
+    .stat:last-child { border-right: none; }
+    .stat-n { font-size: 24px; font-weight: 800; letter-spacing: -1px; }
+    .stat-l { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* ═══════════════════════════════════════════
+       HOW IT WORKS — STEP CARDS
+    ═══════════════════════════════════════════ */
+    .steps { display: flex; flex-direction: column; gap: 0; }
+    .step {
+      display: flex; gap: 0;
+      border: 1px solid var(--border); border-bottom: none;
+      background: var(--bg1);
+    }
+    .step:first-child { border-radius: 10px 10px 0 0; }
+    .step:last-child { border-radius: 0 0 10px 10px; border-bottom: 1px solid var(--border); }
+    .step:hover { background: var(--bg2); }
+    .step-num-col {
+      width: 60px; flex-shrink: 0; display: flex; align-items: flex-start; justify-content: center;
+      padding: 24px 0 0; border-right: 1px solid var(--border);
+    }
+    .step-num {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--a-dim); border: 1px solid var(--a-border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: var(--accent); flex-shrink: 0;
+    }
+    .step-body { padding: 22px 24px; flex: 1; }
+    .step-body h3 { font-size: 15px; margin-bottom: 6px; }
+    .step-body p { font-size: 13.5px; margin-bottom: 10px; }
+    .step-cmd { font-family: var(--mono); font-size: 12.5px; color: var(--green); background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 8px 14px; display: inline-block; margin-top: 4px; }
+
+    /* ═══════════════════════════════════════════
+       TUTORIAL — EXPANDABLE STEPS
+    ═══════════════════════════════════════════ */
+    .tut-cards { display: flex; flex-direction: column; gap: 12px; }
+    .tut-card { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .tut-header {
+      display: flex; align-items: center; gap: 14px;
+      padding: 18px 22px; background: var(--bg1); cursor: pointer;
+      transition: background .15s; user-select: none;
+    }
+    .tut-header:hover { background: var(--bg2); }
+    .tut-n { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0; }
+    .tut-title { flex: 1; font-size: 14.5px; font-weight: 600; }
+    .tut-meta { font-size: 12px; color: var(--muted); }
+    .tut-chevron { color: var(--dim); font-size: 12px; transition: transform .2s; }
+    .tut-card.open .tut-chevron { transform: rotate(90deg); }
+    .tut-body { display: none; padding: 20px 22px 24px; background: var(--bg); border-top: 1px solid var(--border); }
+    .tut-card.open .tut-body { display: block; }
+    .tut-body p { font-size: 13.5px; margin-bottom: 12px; }
+    .tut-body ul { margin-bottom: 12px; }
+    .tut-body li { font-size: 13.5px; margin-bottom: 5px; }
+    .callout { padding: 12px 16px; border-left: 3px solid var(--accent); background: var(--a-dim); border-radius: 0 6px 6px 0; margin: 12px 0; font-size: 13.5px; color: var(--text); }
+    .callout.green { border-color: var(--green); background: rgba(16,185,129,.06); }
+    .callout.yellow { border-color: var(--yellow); background: var(--y-dim); }
+
+    /* ═══════════════════════════════════════════
+       FEATURE CARDS
+    ═══════════════════════════════════════════ */
+    .feat-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(280px,1fr)); gap: 1px; background: var(--border); border-radius: 10px; overflow: hidden; }
+    .feat-card { background: var(--bg); padding: 28px; transition: background .2s; }
+    .feat-card:hover { background: var(--bg1); }
+    .feat-icon { font-size: 22px; margin-bottom: 14px; display: block; }
+    .feat-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+    .feat-card p { font-size: 13px; color: var(--muted); line-height: 1.7; margin-bottom: 12px; }
+    .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-family: var(--mono); }
+    .b-green { background: var(--g-dim); color: var(--green); }
+    .b-yellow { background: var(--y-dim); color: var(--yellow); }
+    .b-cyan { background: var(--c-dim); color: var(--cyan); }
+    .b-purple { background: var(--a-dim); color: var(--accent); }
+
+    /* ═══════════════════════════════════════════
+       ARCHITECTURE LAYERS
+    ═══════════════════════════════════════════ */
+    .arch-wrap { max-width: 700px; }
+    .arch-layer {
+      display: flex; align-items: center; gap: 16px;
+      padding: 16px 22px; border: 1px solid var(--border); border-bottom: none;
+      background: var(--bg1); transition: background .15s;
+    }
+    .arch-layer:first-child { border-radius: 10px 10px 0 0; }
+    .arch-layer:last-child { border-bottom: 1px solid var(--border); border-radius: 0 0 10px 10px; }
+    .arch-layer:hover { background: var(--bg2); }
+    .arch-n { font-size: 11px; font-family: var(--mono); color: var(--dim); min-width: 22px; }
+    .arch-name { font-size: 14px; font-weight: 600; min-width: 200px; }
+    .arch-desc { font-size: 13px; color: var(--muted); }
+    .arch-arrow { display: flex; justify-content: center; padding: 3px 0; }
+    .arch-line { width: 1px; height: 16px; background: linear-gradient(var(--accent),var(--cyan)); opacity: .4; margin: 0 auto; }
+
+    /* ═══════════════════════════════════════════
+       MEMORY VAULT TREE
+    ═══════════════════════════════════════════ */
+    .vault-tree { font-family: var(--mono); font-size: 13px; line-height: 1.9; background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 22px 24px; }
+    .vf { color: var(--cyan); }
+    .vn { color: var(--dim); }
+
+    /* ═══════════════════════════════════════════
+       MEMORY LOOP DIAGRAM
+    ═══════════════════════════════════════════ */
+    .loop { display: grid; grid-template-columns: 1fr 40px 1fr 40px 1fr; align-items: center; gap: 0; margin: 28px 0; }
+    .loop-box { background: var(--bg2); border: 1px solid var(--border2); border-radius: 10px; padding: 18px; text-align: center; }
+    .loop-box.active { border-color: var(--accent); background: var(--a-dim); }
+    .loop-box h4 { font-size: 13.5px; margin-bottom: 4px; color: var(--text); }
+    .loop-box p { font-size: 12px; color: var(--muted); margin: 0; line-height: 1.5; }
+    .loop-arrow { text-align: center; font-size: 20px; color: var(--dim); }
+
+    /* ═══════════════════════════════════════════
+       SKILLS TABLE
+    ═══════════════════════════════════════════ */
+    .skill-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    .skill-table th { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+    .skill-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .skill-table tr:last-child td { border-bottom: none; }
+    .skill-table tr:hover td { background: var(--bg1); }
+    .sn { font-family: var(--mono); color: var(--text); }
+    .sd { color: var(--muted); line-height: 1.5; }
+
+    /* ═══════════════════════════════════════════
+       COMMAND REFERENCE
+    ═══════════════════════════════════════════ */
+    .cmd-group { margin-bottom: 36px; }
+    .cmd-group-label { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan); margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .cmd-row { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); align-items: baseline; }
+    .cmd-row:last-child { border-bottom: none; }
+    .cmd-name { font-family: var(--mono); font-size: 12.5px; color: var(--green); min-width: 300px; flex-shrink: 0; }
+    .cmd-desc { font-size: 13px; color: var(--muted); }
+
+    /* ═══════════════════════════════════════════
+       ADAPTER GRID
+    ═══════════════════════════════════════════ */
+    .adapter-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(175px,1fr)); gap: 10px; }
+    .adapter-card { background: var(--bg1); border: 1px solid var(--border); border-radius: 10px; padding: 18px; text-align: center; transition: all .2s; }
+    .adapter-card:hover { background: var(--bg2); border-color: var(--accent); transform: translateY(-2px); }
+    .ai { font-size: 26px; margin-bottom: 8px; }
+    .an { font-size: 13.5px; font-weight: 600; margin-bottom: 3px; }
+    .af { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+    .ab { display: inline-block; margin-top: 8px; font-size: 10px; padding: 2px 7px; border-radius: 3px; font-weight: 600; }
+    .ab-s { background: var(--g-dim); color: var(--green); }
+    .ab-t { background: var(--y-dim); color: var(--yellow); }
+
+    /* ═══════════════════════════════════════════
+       STATUS TABLE
+    ═══════════════════════════════════════════ */
+    .status-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    .status-table th { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+    .status-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); }
+    .status-table tr:last-child td { border-bottom: none; }
+    .st { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 4px; font-size: 11.5px; font-weight: 600; }
+    .st-ok  { background: var(--g-dim); color: var(--green); }
+    .st-exp { background: var(--y-dim); color: var(--yellow); }
+    .st-sp  { background: var(--a-dim); color: var(--accent); }
+
+    /* ═══════════════════════════════════════════
+       CTA SECTION
+    ═══════════════════════════════════════════ */
+    .cta-section { text-align: center; padding: 100px clamp(24px,5vw,80px); position: relative; }
+    .cta-glow { position: absolute; width: 500px; height: 200px; background: radial-gradient(ellipse,var(--glow) 0%,transparent 70%); pointer-events: none; left: 50%; transform: translateX(-50%); top: 20px; }
+    .cta-section h2 { font-size: clamp(28px,4vw,48px); font-weight: 800; letter-spacing: -1.5px; margin-bottom: 16px; }
+    .cta-section p { font-size: 17px; color: var(--muted); max-width: 440px; margin: 0 auto 36px; }
+
+    /* ═══════════════════════════════════════════
+       FOOTER
+    ═══════════════════════════════════════════ */
+    footer { margin-left: 0; padding: 32px clamp(24px,5vw,80px); border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: 13px; color: var(--dim); }
+    footer a { color: var(--muted); }
+    footer a:hover { color: var(--text); }
+
+    /* ═══════════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════════ */
+    @media (max-width: 900px) {
+      #sidebar { transform: translateX(-100%); }
+      #sidebar.open { transform: translateX(0); }
+      #main { margin-left: 0; }
+      .hamburger { display: flex; }
+      .topbar-center { display: none; }
+      .loop { grid-template-columns: 1fr; }
+      .loop-arrow { transform: rotate(90deg); }
+      .cmd-name { min-width: 200px; }
+    }
+    @media (max-width: 600px) {
+      .stats-bar { flex-direction: column; }
+      .stat { border-right: none; border-bottom: 1px solid var(--border); }
+      .stat:last-child { border-bottom: none; }
+      .cmd-row { flex-wrap: wrap; }
+    }
+
+    /* scroll-margin for fixed nav */
+    [id] { scroll-margin-top: calc(var(--topbar-h) + 20px); }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════ TOP NAV ═══════════ -->
+<nav id="topbar">
+  <div class="topbar-left">
+    <button class="hamburger" id="ham" aria-label="Menu" onclick="toggleSidebar()">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="brand">
+      <span class="brand-dot"></span>
+      omnix
+      <span class="brand-v">v0.1.0</span>
+    </div>
+  </div>
+
+  <div class="topbar-center">
+    <a href="#overview">Overview</a>
+    <a href="#how-it-works">How it works</a>
+    <a href="#tutorial">Tutorial</a>
+    <a href="#skills">Skills</a>
+    <a href="#commands">Commands</a>
+    <a href="#status">Status</a>
+  </div>
+
+  <div class="topbar-right">
+    <a href="https://github.com/Abhiram1106/omnix">GitHub ↗</a>
+    <a href="https://www.npmjs.com/package/omnix">npm ↗</a>
+    <a href="#install" class="btn-install">Install →</a>
+  </div>
+</nav>
+
+<!-- ═══════════ SIDEBAR ═══════════ -->
+<aside id="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-group-label">Getting Started</div>
+    <a class="sidebar-link" href="#overview"><span class="si">🏠</span><span class="sl">Overview</span></a>
+    <a class="sidebar-link" href="#how-it-works"><span class="si">⚙️</span><span class="sl">How it works</span></a>
+    <a class="sidebar-link" href="#install"><span class="si">📦</span><span class="sl">Installation</span></a>
+    <a class="sidebar-link" href="#tutorial"><span class="si">🎓</span><span class="sl">Tutorial</span> <span class="sidebar-badge sb-new">5 steps</span></a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-group-label">Core Concepts</div>
+    <a class="sidebar-link" href="#memory"><span class="si">🧠</span><span class="sl">Memory vault</span></a>
+    <a class="sidebar-link" href="#memory-loop"><span class="si">🔄</span><span class="sl">Memory loop</span></a>
+    <a class="sidebar-link" href="#adapters"><span class="si">🔌</span><span class="sl">Adapters</span></a>
+    <a class="sidebar-link" href="#architecture"><span class="si">📐</span><span class="sl">Architecture</span></a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-group-label">Skills</div>
+    <a class="sidebar-link" href="#skills"><span class="si">⚡</span><span class="sl">All skills</span> <span class="sidebar-badge sb-live">10 live</span></a>
+    <a class="sidebar-link" href="#skill-examples"><span class="si">▶</span><span class="sl">Running skills</span></a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-group-label">CLI Reference</div>
+    <a class="sidebar-link" href="#commands"><span class="si">⌨️</span><span class="sl">All commands</span></a>
+    <a class="sidebar-link" href="#cmd-setup"><span class="si">∙</span><span class="sl">Setup &amp; inspection</span></a>
+    <a class="sidebar-link" href="#cmd-memory"><span class="si">∙</span><span class="sl">Memory commands</span></a>
+    <a class="sidebar-link" href="#cmd-skills"><span class="si">∙</span><span class="sl">Skills commands</span></a>
+    <a class="sidebar-link" href="#cmd-hooks"><span class="si">∙</span><span class="sl">Hooks &amp; routing</span></a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-group-label">Reference</div>
+    <a class="sidebar-link" href="#features"><span class="si">✨</span><span class="sl">Features</span></a>
+    <a class="sidebar-link" href="#status"><span class="si">📊</span><span class="sl">Project status</span></a>
+    <a class="sidebar-link" href="#faq"><span class="si">❓</span><span class="sl">FAQ</span></a>
+  </div>
+</aside>
+
+<!-- ═══════════ MAIN CONTENT ═══════════ -->
+<main id="main">
+
+  <!-- ─── OVERVIEW / HERO ─── -->
+  <section class="doc-section hero-section" id="overview">
+    <div class="section-tag">Open Source · MIT · Node 18+</div>
+    <h1><span class="grad">Omnix</span> — Context-Aware<br>AI Engineering Runtime</h1>
+    <p class="hero-lead">
+      A CLI that writes a <strong>persistent memory vault</strong>, workflow conventions, and
+      <strong>10 live skill engines</strong> into your project — so every AI coding tool
+      (Claude Code, Cursor, Cline, Windsurf…) has shared context, shared error memory,
+      and shared conventions.
+    </p>
+
+    <div class="pills">
+      <span class="pill"><span class="pill-dot"></span> 22 CLI commands</span>
+      <span class="pill"><span class="pill-dot"></span> 10 live skill handlers</span>
+      <span class="pill"><span class="pill-dot"></span> 9 AI tool adapters</span>
+      <span class="pill"><span class="pill-dot"></span> 126 tests passing</span>
+      <span class="pill"><span class="pill-dot"></span> Zero API keys required</span>
+      <span class="pill"><span class="pill-dot"></span> Works offline</span>
+    </div>
+
+    <div class="cta-row">
+      <a href="#install" class="btn btn-primary">Install in 30 seconds</a>
+      <a href="#how-it-works" class="btn btn-outline">How it works →</a>
+    </div>
+
+    <div class="install-row">
+      <span class="t-p">$</span>
+      <span class="install-cmd">npx create-omnix</span>
+      <button class="copy-btn" onclick="navigator.clipboard.writeText('npx create-omnix');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1600)">Copy</button>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat"><div class="stat-n" style="color:var(--accent)">22</div><div class="stat-l">commands</div></div>
+      <div class="stat"><div class="stat-n" style="color:var(--green)">10</div><div class="stat-l">live skills</div></div>
+      <div class="stat"><div class="stat-n" style="color:var(--cyan)">9</div><div class="stat-l">adapters</div></div>
+      <div class="stat"><div class="stat-n" style="color:var(--green)">126</div><div class="stat-l">tests</div></div>
+      <div class="stat"><div class="stat-n" style="color:var(--accent)">0</div><div class="stat-l">API keys</div></div>
+    </div>
+  </section>
+
+  <!-- ─── HOW IT WORKS ─── -->
+  <section class="doc-section" id="how-it-works">
+    <div class="section-tag">How it works</div>
+    <h2>What Omnix actually does — precisely.</h2>
+    <p>
+      Omnix is <strong>not a runtime</strong>. It does not run autonomously, call AI APIs, or execute code on your behalf.
+      It is a <strong>CLI that writes structured files into your project</strong>.
+      Your AI tool reads those files.
+    </p>
+    <div class="callout yellow">
+      <strong>One-sentence summary:</strong> Omnix writes files → your AI tool reads them → your AI tool behaves better.
+    </div>
+
+    <h3 style="margin-top:36px">The three things Omnix does</h3>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num-col"><div class="step-num">1</div></div>
+        <div class="step-body">
+          <h3>Creates the memory vault</h3>
+          <p>
+            Runs <code>omnix init</code> → creates <code>.obsidian-ai-memory/</code> in your project with 11 folders.
+            These are plain markdown files. Your AI tool reads them.
+            You can also open the folder in <a href="https://obsidian.md">Obsidian</a> for graph view — or never open Obsidian, it's just files.
+          </p>
+          <p>
+            <strong>Sessions folder</strong> accumulates a digest after every meaningful session.
+            <strong>Error memory</strong> stores every fixed bug with root cause + fix + prevention rule.
+            <strong>Decisions folder</strong> stores ADRs.
+            <strong>Architecture folder</strong> stores system overview and threat models.
+          </p>
+          <div class="step-cmd">omnix init --yes</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num-col"><div class="step-num">2</div></div>
+        <div class="step-body">
+          <h3>Installs adapter files for your AI tool</h3>
+          <p>
+            Each AI tool reads a different file for project instructions.
+            Claude Code reads <code>CLAUDE.md</code>. Cursor reads <code>.cursor/rules/*.mdc</code>.
+            Omnix generates the right file for each tool, pointing it at the memory vault and AGENTS.md.
+          </p>
+          <p>
+            <code>AGENTS.md</code> is the source of truth — it contains the memory loop instructions, safety rules,
+            agent routing table, and skill discovery table.
+            All tool-specific adapter files are thin wrappers that import AGENTS.md.
+          </p>
+          <div class="step-cmd">omnix install-adapters --adapters claude,cursor,generic</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num-col"><div class="step-num">3</div></div>
+        <div class="step-body">
+          <h3>Provides 10 live skill engines + 22 CLI commands</h3>
+          <p>
+            Skills are not just instruction files. 10 of them have real runtime handlers — they analyse your
+            actual project (code files, package.json, git history) and produce output: test gap reports,
+            security scans, debugging hypotheses, release checklists.
+          </p>
+          <p>
+            The CLI also provides: error memory search (BM25), vault health scoring, session diff tracking,
+            git hook installation, vault schema validation, and activity heatmaps.
+          </p>
+          <div class="step-cmd">omnix skills --run security-threat-modeler</div>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="margin-top:40px">What happens when you open Claude Code after init</h3>
+    <p>Claude Code reads <code>CLAUDE.md</code> on every session. Your CLAUDE.md has:</p>
+    <ul>
+      <li><strong>@AGENTS.md import</strong> — loads the full memory loop, routing table, and skill table</li>
+      <li><strong>Memory loop instructions</strong> — retrieve context before starting, write digest after finishing</li>
+      <li><strong>Safety rules</strong> — confirm before destructive operations, never expose secrets</li>
+      <li><strong>Active skills section</strong> — any skills you activated with <code>omnix skills activate &lt;name&gt;</code></li>
+    </ul>
+    <p>
+      Claude Code doesn't "know" Omnix. It just reads the file. The file tells it how to behave.
+      This is convention, not magic.
+    </p>
+    <div class="callout">
+      <strong>Important limitation:</strong> Whether your AI tool actually follows the instructions in CLAUDE.md depends on the tool and model.
+      Claude Code with Sonnet/Opus has the best compliance. Other tools vary.
+      Omnix cannot force any AI tool to do anything — it can only write clear instructions.
+    </div>
+  </section>
+
+  <!-- ─── INSTALL ─── -->
+  <section class="doc-section" id="install">
+    <div class="section-tag">Installation</div>
+    <h2>Install in your project.</h2>
+    <p>Requires Node.js 18+. No accounts. No API keys. Files only.</p>
+
+    <h3>Option 1: npx (no global install)</h3>
+    <div class="terminal">
+      <div class="t-bar"><span class="td td-r"></span><span class="td td-y"></span><span class="td td-g"></span><span class="t-title">~/my-project</span></div>
+      <div class="t-body">
+        <div><span class="t-p">$ </span><span class="s">npx create-omnix</span></div>
+        <div class="o">  ✓ Memory vault created  (.obsidian-ai-memory/)</div>
+        <div class="o">  ✓ Adapters installed    (claude, cursor, generic)</div>
+        <div class="o">  ✓ First session digest  (01-SESSIONS/2025-01-15/)</div>
+        <div class="o">  ✓ .gitignore updated    (.omnix/memory/, .omnix/cache/)</div>
+        <div class="o">  ✓ Vault version written (1.1)</div>
+        <div>&nbsp;</div>
+        <div><span class="t-p">$ </span><span class="s">omnix status</span></div>
+        <div class="o">  Health Score   [████████████████░░░░]  82/100  (B)</div>
+        <div class="o">  Vault: 11 folders · 0 sessions · 0 errors</div>
+        <div class="o">  Adapters: generic, claude</div>
+        <div class="o">  Next: omnix tutorial → omnix scan --write</div>
+      </div>
+    </div>
+
+    <h3 style="margin-top:28px">Option 2: global install</h3>
+    <pre><span class="s">npm install -g omnix</span>
+<span class="s">omnix init</span>        <span class="c"># same as npx create-omnix</span>
+<span class="s">omnix tutorial</span>    <span class="c"># 5-step walkthrough</span>
+<span class="s">omnix status</span>      <span class="c"># health score</span></pre>
+
+    <h3 style="margin-top:28px">After init: what was created</h3>
+    <pre><span class="c">.obsidian-ai-memory/     ← memory vault (11 folders)</span>
+<span class="c">.omnix/                  ← runtime config</span>
+<span class="c">  settings/omnix.json    ← project settings</span>
+<span class="c">  .omnix-vault-version   ← schema version (1.1)</span>
+<span class="s">CLAUDE.md</span>               <span class="c">← Claude Code adapter</span>
+<span class="s">AGENTS.md</span>               <span class="c">← universal source of truth</span>
+<span class="s">AI_RULES.md</span>             <span class="c">← shared engineering rules</span>
+<span class="s">STARTUP_PROTOCOL.md</span>     <span class="c">← session startup contract</span>
+<span class="s">.cursor/rules/</span>          <span class="c">← Cursor adapter (5 .mdc files)</span></pre>
+  </section>
+
+  <!-- ─── TUTORIAL ─── -->
+  <section class="doc-section" id="tutorial">
+    <div class="section-tag">Tutorial</div>
+    <h2>5-step walkthrough — start here.</h2>
+    <p>
+      Run <code>omnix tutorial</code> for the interactive CLI version.
+      Or read the full walkthrough here — this is more detailed than the CLI output.
+    </p>
+    <div class="callout">
+      <strong>Prerequisite:</strong> Run <code>npx create-omnix</code> first. Then come back here.
+    </div>
+
+    <div class="tut-cards" style="margin-top:28px">
+
+      <!-- Step 1 -->
+      <div class="tut-card open">
+        <div class="tut-header" onclick="toggleTut(this)">
+          <div class="tut-n">1</div>
+          <div class="tut-title">Understand what Omnix installed</div>
+          <div class="tut-meta">2 min</div>
+          <div class="tut-chevron">▶</div>
+        </div>
+        <div class="tut-body">
+          <p>Run this to see everything Omnix installed and your current health score:</p>
+          <pre><span class="s">omnix detect</span>    <span class="c"># list every installed file</span>
+<span class="s">omnix status</span>    <span class="c"># health score + what needs setup</span>
+<span class="s">omnix verify</span>    <span class="c"># confirm files are AI-readable</span></pre>
+          <p><strong>What you'll see in status:</strong></p>
+          <ul>
+            <li><strong>Health score 0–100</strong> — starts around 70/100 after init</li>
+            <li><strong>Vault present</strong> — the 11-folder memory vault</li>
+            <li><strong>Installed adapters</strong> — which AI tools got config files</li>
+            <li><strong>project-context.md customized</strong> — starts as "needs setup" until you run <code>omnix scan --write</code></li>
+            <li><strong>Next steps</strong> — the tool tells you exactly what to do next</li>
+          </ul>
+          <div class="callout green">The score will be <strong>~70/100</strong> after a fresh init. That's normal. Run <code>omnix scan --write</code> in step 2 to improve it.</div>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="tut-card">
+        <div class="tut-header" onclick="toggleTut(this)">
+          <div class="tut-n">2</div>
+          <div class="tut-title">Populate your project context</div>
+          <div class="tut-meta">1 min</div>
+          <div class="tut-chevron">▶</div>
+        </div>
+        <div class="tut-body">
+          <p>
+            Right after init, <code>.obsidian-ai-memory/02-PROJECTS/project-context.md</code> has placeholder content.
+            Omnix can auto-detect your stack and fill it in:
+          </p>
+          <pre><span class="s">omnix scan --write</span></pre>
+          <p>This detects your:</p>
+          <ul>
+            <li><strong>Languages</strong> — TypeScript, Python, Go, Rust, etc.</li>
+            <li><strong>Frameworks</strong> — Next.js, Express, FastAPI, Django, etc.</li>
+            <li><strong>Package manager</strong> — npm, pnpm, yarn, pip, cargo</li>
+            <li><strong>AI tools installed</strong> — what adapter files exist</li>
+            <li><strong>Testing frameworks</strong> — Vitest, Jest, pytest, etc.</li>
+          </ul>
+          <p>Then writes it all to <code>02-PROJECTS/project-context.md</code> and <code>02-PROJECTS/current-state.md</code>.</p>
+          <p>
+            After this, run <code>omnix status</code> again — you'll see the score jump because
+            project-context.md is now populated.
+          </p>
+          <div class="callout">
+            <strong>Optional:</strong> Add deeper context manually — your team, deadlines, constraints, tech debt.
+            The AI will use everything in this file.
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="tut-card">
+        <div class="tut-header" onclick="toggleTut(this)">
+          <div class="tut-n">3</div>
+          <div class="tut-title">Learn the memory loop</div>
+          <div class="tut-meta">3 min — most important step</div>
+          <div class="tut-chevron">▶</div>
+        </div>
+        <div class="tut-body">
+          <p>The entire value of Omnix depends on one habit: <strong>Retrieve → Work → Digest</strong>.</p>
+
+          <div class="loop">
+            <div class="loop-box active">
+              <h4>🔍 Retrieve</h4>
+              <p>Load relevant vault context before starting any task</p>
+            </div>
+            <div class="loop-arrow">→</div>
+            <div class="loop-box">
+              <h4>⚙️ Work</h4>
+              <p>Do the actual task with your AI tool</p>
+            </div>
+            <div class="loop-arrow">→</div>
+            <div class="loop-box">
+              <h4>📝 Digest</h4>
+              <p>Record what happened in the vault</p>
+            </div>
+          </div>
+
+          <h4>RETRIEVE — before starting any task</h4>
+          <pre><span class="s">omnix retrieve-context <span class="k">--task</span> "fix login bug"</span>
+<span class="c"># Loads: error-memory first (debugging mode auto-detected)</span>
+<span class="c"># Then: project-context, recent sessions</span>
+<span class="c"># Respects token budget — no vault dumping</span></pre>
+          <p>
+            This prints a context block you paste into your AI tool, or put in your CLAUDE.md.
+            The retrieval mode is auto-detected: "fix login bug" → debugging mode (loads error memory first).
+            "add OAuth feature" → deep mode (loads project context + architecture).
+          </p>
+
+          <h4 style="margin-top:16px">DIGEST — after meaningful work</h4>
+          <pre><span class="s">omnix session-digest <span class="k">--auto</span> <span class="k">--tool</span> claude-code</span>
+<span class="c"># auto = reads git diff to detect what changed</span>
+<span class="c"># writes to .obsidian-ai-memory/01-SESSIONS/YYYY-MM-DD/</span></pre>
+          <p>Or install a git hook to do this automatically after every commit:</p>
+          <pre><span class="s">omnix hooks <span class="k">--install</span> post-commit</span>
+<span class="c"># From now on: auto-writes digest after every git commit</span></pre>
+
+          <h4 style="margin-top:16px">AFTER FIXING A BUG — record it</h4>
+          <pre><span class="s">omnix skills <span class="k">--run</span> error-intelligence <span class="k">--input</span> \
+  "TypeError: null | user.createdAt was undefined | added null guard | always check optional fields"</span>
+<span class="c"># Writes to 03-ERRORS/error-memory.md</span>
+<span class="c"># Next time you hit a similar error, omnix error-match finds it</span></pre>
+
+          <p><strong>Why this matters:</strong> After 10 sessions, your error memory has 10 entries. After 30 sessions,
+          your AI tool stops making the same mistakes because it searches past fixes first. That's the compounding value.</p>
+        </div>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="tut-card">
+        <div class="tut-header" onclick="toggleTut(this)">
+          <div class="tut-n">4</div>
+          <div class="tut-title">Run your first live skill</div>
+          <div class="tut-meta">5 min</div>
+          <div class="tut-chevron">▶</div>
+        </div>
+        <div class="tut-body">
+          <p>Skills are the most powerful part of Omnix. 10 skills have live runtime handlers that actually analyse your code:</p>
+          <pre><span class="c"># See all skills</span>
+<span class="s">omnix skills</span>
+
+<span class="c"># Scan your repo for code issues</span>
+<span class="s">omnix skills <span class="k">--run</span> repo-scanner</span>
+<span class="c"># → entry points, hotspots, test gaps, 0–100 risk score</span>
+<span class="c"># → writes to 05-ARCHITECTURE/repo-scan.md</span>
+
+<span class="c"># Security scan (STRIDE + OWASP patterns)</span>
+<span class="s">omnix skills <span class="k">--run</span> security-threat-modeler</span>
+<span class="c"># → scans source for eval, innerHTML, SQL concat, weak crypto</span>
+<span class="c"># → checks .env is gitignored, no hardcoded keys</span>
+<span class="c"># → writes to 05-ARCHITECTURE/threat-model.md</span>
+
+<span class="c"># Debug an error</span>
+<span class="s">omnix skills <span class="k">--run</span> debugging-specialist <span class="k">--input</span> "TypeError: cannot read property of null"</span>
+<span class="c"># → searches your error memory first</span>
+<span class="c"># → classifies error type</span>
+<span class="c"># → generates hypothesis + 4-phase plan</span>
+
+<span class="c"># Test gap analysis</span>
+<span class="s">omnix skills <span class="k">--run</span> test-architect</span>
+<span class="c"># → counts existing tests</span>
+<span class="c"># → finds src files with no test</span>
+<span class="c"># → prioritised gap list (auth, payment = highest priority)</span></pre>
+
+          <p><strong>Activate a skill in Claude Code</strong> — so Claude loads it automatically:</p>
+          <pre><span class="s">omnix skills activate debugging-specialist</span>
+<span class="c"># Adds @import to CLAUDE.md Active Skills section</span>
+<span class="c"># Claude Code now loads the skill on every session</span></pre>
+        </div>
+      </div>
+
+      <!-- Step 5 -->
+      <div class="tut-card">
+        <div class="tut-header" onclick="toggleTut(this)">
+          <div class="tut-n">5</div>
+          <div class="tut-title">Install git hooks + check secrets</div>
+          <div class="tut-meta">2 min</div>
+          <div class="tut-chevron">▶</div>
+        </div>
+        <div class="tut-body">
+          <p>Two git hooks make Omnix work passively — no manual steps needed after coding sessions:</p>
+          <pre><span class="s">omnix hooks <span class="k">--install</span> all</span>
+<span class="c"># pre-commit:  blocks commit if secrets detected in vault</span>
+<span class="c"># post-commit: auto-writes session digest after every commit</span></pre>
+
+          <p><strong>What the pre-commit hook checks:</strong></p>
+          <ul>
+            <li>OpenAI / Anthropic keys (<code>sk-...</code>)</li>
+            <li>GitHub tokens (<code>ghp_...</code>)</li>
+            <li>AWS access keys (<code>AKIA...</code>)</li>
+            <li>JWT tokens (three base64 segments)</li>
+            <li>Database connection strings with passwords</li>
+            <li>PEM private keys</li>
+            <li><code>.env</code> secret value patterns</li>
+          </ul>
+
+          <p>Run anytime manually:</p>
+          <pre><span class="s">omnix check-secrets</span>           <span class="c"># scan vault now</span>
+<span class="s">omnix check-secrets <span class="k">--json</span></span>    <span class="c"># machine-readable (for CI)</span></pre>
+
+          <p><strong>You're done.</strong> From here, the vault builds up passively via git hooks. Check in occasionally:</p>
+          <pre><span class="s">omnix status</span>          <span class="c"># health score + what to improve</span>
+<span class="s">omnix vault streak</span>    <span class="c"># activity heatmap + streak stats</span>
+<span class="s">omnix diff</span>            <span class="c"># changes since last session digest</span></pre>
+
+          <div class="callout green">
+            <strong>The compound effect:</strong> After 2 weeks of using Omnix with git hooks, your vault has 14+ session digests,
+            your error memory has real entries, and your AI tool starts every session with actual project context.
+            That's when the value becomes obvious.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── MEMORY VAULT ─── -->
+  <section class="doc-section" id="memory">
+    <div class="section-tag">Memory System</div>
+    <h2>The memory vault.</h2>
+    <p>Plain markdown files in your project. Your AI tool reads them. Obsidian can visualize them.</p>
+
+    <div class="vault-tree">
+      <div><span class="vf">.obsidian-ai-memory/</span></div>
+      <div>&nbsp; <span class="vf">00-INBOX/</span>         <span class="vn">← quick captures, unsorted notes</span></div>
+      <div>&nbsp; <span class="vf">01-SESSIONS/</span>      <span class="vn">← one folder per day, one digest per session</span></div>
+      <div>&nbsp;&nbsp;&nbsp; <span class="vf">2025-01-15/</span></div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="vf">session-1430-claude-code.md</span></div>
+      <div>&nbsp; <span class="vf">02-PROJECTS/</span>      <span class="vn">← project context, active goals, current state</span></div>
+      <div>&nbsp;&nbsp;&nbsp; <span class="vf">project-context.md</span>  <span class="vn">← auto-populated by omnix scan --write</span></div>
+      <div>&nbsp;&nbsp;&nbsp; <span class="vf">active-goals.md</span></div>
+      <div>&nbsp; <span class="vf">03-ERRORS/</span>        <span class="vn">← BM25-searchable error memory ⭐</span></div>
+      <div>&nbsp;&nbsp;&nbsp; <span class="vf">error-memory.md</span>   <span class="vn">← root cause + fix + prevention per bug</span></div>
+      <div>&nbsp;&nbsp;&nbsp; <span class="vf">anti-patterns.md</span>  <span class="vn">← promoted from recurring errors</span></div>
+      <div>&nbsp; <span class="vf">04-DECISIONS/</span>     <span class="vn">← ADR index, decision entries</span></div>
+      <div>&nbsp; <span class="vf">05-ARCHITECTURE/</span>  <span class="vn">← system overview, threat model, repo scan</span></div>
+      <div>&nbsp; <span class="vf">06-WORKFLOWS/</span>     <span class="vn">← active + completed workflows</span></div>
+      <div>&nbsp; <span class="vf">07-LESSONS/</span>       <span class="vn">← lessons learned, external research cache</span></div>
+      <div>&nbsp; <span class="vf">08-PROMPTS/</span>       <span class="vn">← effective prompts, failed prompts</span></div>
+      <div>&nbsp; <span class="vf">09-AGENTS/</span>        <span class="vn">← AI tool / model behavior notes</span></div>
+      <div>&nbsp; <span class="vf">10-DAILY-DIGESTS/</span> <span class="vn">← daily summaries, session archives</span></div>
+      <div>&nbsp; <span class="vf">templates/</span>        <span class="vn">← fill-in templates for each record type</span></div>
+    </div>
+
+    <h3 style="margin-top:28px">Secret protection</h3>
+    <p>Every session digest is sanitized before writing. These patterns are redacted:</p>
+    <ul>
+      <li>OpenAI/Anthropic keys (<code>sk-...</code>), Stripe keys, GitHub tokens</li>
+      <li>AWS access key IDs (<code>AKIA...</code>), Slack tokens</li>
+      <li>JWTs (three base64url segments)</li>
+      <li>PEM private key blocks</li>
+      <li>Database connection strings with passwords</li>
+      <li><code>.env</code> lines matching <code>*_KEY=</code>, <code>*_SECRET=</code>, etc.</li>
+    </ul>
+    <p>Additionally, <code>.omnix/memory/</code> and <code>.omnix/cache/</code> are auto-added to <code>.gitignore</code>.</p>
+  </section>
+
+  <!-- ─── MEMORY LOOP ─── -->
+  <section class="doc-section" id="memory-loop">
+    <div class="section-tag">Memory Loop</div>
+    <h2>Retrieve → Work → Digest</h2>
+
+    <h3>Retrieval modes</h3>
+    <p>
+      <code>omnix retrieve-context</code> and <code>omnix context-pack</code> load vault files
+      in a task-type-aware priority order, respecting a token budget.
+    </p>
+    <div style="overflow-x:auto">
+      <table class="skill-table">
+        <thead><tr><th>Mode</th><th>Token budget</th><th>Loads first</th><th>Auto-detected from</th></tr></thead>
+        <tbody>
+          <tr><td class="sn">minimal</td><td>500</td><td>Project context only</td><td>"what is", "show me", "list"</td></tr>
+          <tr><td class="sn">balanced</td><td>1 500</td><td>Context + recent sessions</td><td>default</td></tr>
+          <tr><td class="sn">deep</td><td>3 000</td><td>Full relevant vault</td><td>"build", "implement", "add feature"</td></tr>
+          <tr><td class="sn">architecture</td><td>4 000</td><td>Architecture + decisions first</td><td>"architect", "design", "ADR"</td></tr>
+          <tr><td class="sn">debugging</td><td>2 000</td><td>Error memory first</td><td>"error", "crash", "bug", "failing"</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:28px">Error memory search</h3>
+    <pre><span class="s">omnix error-match "TypeError cannot read property"</span>
+<span class="c"># → BM25-style relevance search against 03-ERRORS/error-memory.md</span>
+<span class="c"># → returns top-N matches with: title, root cause, fix, prevention rule</span>
+<span class="c"># → use this BEFORE diagnosing any bug</span></pre>
+
+    <h3 style="margin-top:28px">Vault lifecycle management</h3>
+    <pre><span class="s">omnix vault validate</span>           <span class="c"># schema check (use in CI)</span>
+<span class="s">omnix vault streak</span>             <span class="c"># activity heatmap + streak stats</span>
+<span class="s">omnix vault migrate</span>            <span class="c"># upgrade vault schema version</span>
+<span class="s">omnix vault self-test</span>          <span class="c"># verify adapters reference vault</span>
+<span class="s">omnix memory <span class="k">--compact</span></span>        <span class="c"># compress + prune + update index</span>
+<span class="s">omnix memory <span class="k">--stats</span></span>          <span class="c"># per-folder file counts + sizes</span></pre>
+  </section>
+
+  <!-- ─── ADAPTERS ─── -->
+  <section class="doc-section wide" id="adapters">
+    <div class="section-tag">Adapters</div>
+    <h2>One vault. Every AI tool.</h2>
+    <p>
+      Each adapter is a thin file that points to <code>AGENTS.md</code> and the vault.
+      No rule duplication. The adapter translates file naming and syntax for the tool.
+    </p>
+
+    <div class="adapter-grid" style="margin-top:24px">
+      <div class="adapter-card">
+        <div class="ai">⚡</div>
+        <div class="an">Claude Code</div>
+        <div class="af">CLAUDE.md</div>
+        <span class="ab ab-s">Stable</span>
+      </div>
+      <div class="adapter-card">
+        <div class="ai">🌐</div>
+        <div class="an">Generic</div>
+        <div class="af">AGENTS.md</div>
+        <span class="ab ab-s">Always installed</span>
+      </div>
+      <div class="adapter-card">
+        <div class="ai">🎯</div>
+        <div class="an">Cursor</div>
+        <div class="af">.cursor/rules/*.mdc</div>
+        <span class="ab ab-s">Stable</span>
+      </div>
+      <div class="adapter-card">
+        <div class="ai">📝</div>
+        <div class="an">Aider</div>
+        <div class="af">CONVENTIONS.md</div>
+        <span class="ab ab-s">Stable</span>
+      </div>
+      <div class="adapter-card">
+        <div class="ai">💨</div>
+        <div class="an">Windsurf</div>
+        <div class="af">.windsurf/rules.md</div>
+        <span class="ab ab-t">Verify path</span>
+      </div>
+      <div class="adapter-card">
+        <div class="ai">🔧</div>
+        <div class="an">Cline</div>
+        <div class="af">.cline/instructions.md</div>
+        <span class="ab ab-t">Verify path</span>
+      </div>
+      <div class="adapter-card">
+        <div class="ai">🦘</div>
+        <div class="an">Roo Code</div>
+        <div class="af">.roo/instructions.md</div>
+        <span class="ab ab-t">Verify path</span>
+      </div>
+      <div class="adapter-card">
+        <div class="ai">▶️</div>
+        <div class="an">Continue</div>
+        <div class="af">.continue/config.md</div>
+        <span class="ab ab-t">Verify path</span>
+      </div>
+      <div class="adapter-card">
+        <div class="ai">🤲</div>
+        <div class="an">OpenHands</div>
+        <div class="af">.openhands/instructions.md</div>
+        <span class="ab ab-t">Verify path</span>
+      </div>
+    </div>
+
+    <div class="callout yellow" style="margin-top:20px">
+      <strong>TEMPLATE adapters (Windsurf, Cline, Roo, Continue, OpenHands):</strong>
+      These are based on available documentation but their file paths change frequently.
+      Always verify the correct path against each tool's current docs before relying on them.
+    </div>
+  </section>
+
+  <!-- ─── ARCHITECTURE ─── -->
+  <section class="doc-section" id="architecture">
+    <div class="section-tag">Architecture</div>
+    <h2>Layers. Each does one thing.</h2>
+    <div class="arch-wrap">
+      <div class="arch-layer"><span class="arch-n">01</span><span class="arch-name">Your AI Coding Tool</span><span class="arch-desc">Claude Code · Cursor · Cline · Aider · any tool</span></div>
+      <div class="arch-arrow"><div class="arch-line"></div></div>
+      <div class="arch-layer"><span class="arch-n">02</span><span class="arch-name">Adapter Layer</span><span class="arch-desc">CLAUDE.md · .cursor/rules/ · AGENTS.md</span></div>
+      <div class="arch-arrow"><div class="arch-line"></div></div>
+      <div class="arch-layer"><span class="arch-n">03</span><span class="arch-name">Workflow Router</span><span class="arch-desc">Deterministic — no LLM. "fix bug" → debugging + error-intelligence</span></div>
+      <div class="arch-arrow"><div class="arch-line"></div></div>
+      <div class="arch-layer"><span class="arch-n">04</span><span class="arch-name">Skill Engine</span><span class="arch-desc">10 live handlers: debug · test · security · DevOps · release</span></div>
+      <div class="arch-arrow"><div class="arch-line"></div></div>
+      <div class="arch-layer"><span class="arch-n">05</span><span class="arch-name">Context Retrieval</span><span class="arch-desc">Task-type-aware vault queries, 500–4000 token budgets</span></div>
+      <div class="arch-arrow"><div class="arch-line"></div></div>
+      <div class="arch-layer" style="border-color:var(--accent)"><span class="arch-n">06</span><span class="arch-name" style="color:var(--cyan)">Obsidian Memory Brain</span><span class="arch-desc">11-folder vault: sessions · errors · decisions · architecture</span></div>
+      <div class="arch-arrow"><div class="arch-line"></div></div>
+      <div class="arch-layer"><span class="arch-n">07</span><span class="arch-name">Your Codebase</span><span class="arch-desc">Local · portable · no cloud · no API keys</span></div>
+    </div>
+  </section>
+
+  <!-- ─── SKILLS ─── -->
+  <section class="doc-section wide" id="skills">
+    <div class="section-tag">Skill Engine</div>
+    <h2>10 live skills. 20 spec skills.</h2>
+    <p>
+      <strong>Live skills</strong> have runtime handlers — they run real code against your project.
+      <strong>Spec skills</strong> show guided instructions when run.
+    </p>
+
+    <div style="overflow-x:auto;margin-top:24px">
+      <table class="skill-table">
+        <thead><tr><th>Skill</th><th>Status</th><th>What the handler does</th></tr></thead>
+        <tbody>
+          <tr><td class="sn">debugging-specialist</td><td><span class="badge b-green">live</span></td><td class="sd">4-phase debug loop · searches error memory (BM25) · classifies error type (null/network/module/syntax/timeout/auth/OOM) · generates hypothesis + minimal test</td></tr>
+          <tr><td class="sn">error-intelligence</td><td><span class="badge b-green">live</span></td><td class="sd">Records a fixed bug to error-memory.md · parses "symptom | root cause | fix | prevention" · deduplication check</td></tr>
+          <tr><td class="sn">context-manager</td><td><span class="badge b-green">live</span></td><td class="sd">Task-type-aware context snapshot · loads error memory first for debugging, architecture first for design · 2000-token budget</td></tr>
+          <tr><td class="sn">workflow-router</td><td><span class="badge b-green">live</span></td><td class="sd">Deterministic routing across 10 task types · outputs workflow + agents + skills + memory priority + safety flags</td></tr>
+          <tr><td class="sn">repo-scanner</td><td><span class="badge b-green">live</span></td><td class="sd">Entry points · hotspots &gt;200 lines · test gaps (mirror-path detection) · gitignore risks · 0–100 score · writes to vault</td></tr>
+          <tr><td class="sn">dependency-doctor</td><td><span class="badge b-green">live</span></td><td class="sd">npm audit JSON · outdated packages · license count · cross-platform (Windows/Unix safe) · writes to 07-LESSONS/</td></tr>
+          <tr><td class="sn">documentation-maintainer</td><td><span class="badge b-green">live</span></td><td class="sd">Doc drift detection (src changed without docs) · README health · CHANGELOG health · uses git history</td></tr>
+          <tr><td class="sn">test-architect</td><td><span class="badge b-green">live</span></td><td class="sd">Test framework detection · gap analysis (mirror-path aware) · prioritised gap list · test plan generator · writes to vault</td></tr>
+          <tr><td class="sn">security-threat-modeler</td><td><span class="badge b-green">live</span></td><td class="sd">STRIDE analysis · OWASP pattern scan (eval/XSS/SQLi/weak crypto) · secrets check · dep audit · writes threat model to vault</td></tr>
+          <tr><td class="sn">release-manager</td><td><span class="badge b-green">live</span></td><td class="sd">Bump type detection from git log · pre-flight checks (clean/main/CHANGELOG/metadata) · npm pack dry-run · release commands</td></tr>
+          <tr><td class="sn">api-contract-reviewer</td><td><span class="badge b-yellow">spec</span></td><td class="sd">Breaking change checklist · HTTP status codes · pagination · security · OpenAPI linting</td></tr>
+          <tr><td class="sn">database-migration-guard</td><td><span class="badge b-yellow">spec</span></td><td class="sd">Lock risk analysis · rollback plan template · multi-step safe patterns for destructive operations</td></tr>
+          <tr><td class="sn">devops-orchestrator</td><td><span class="badge b-yellow">spec</span></td><td class="sd">Helm + Kustomize pattern · GitHub Actions templates · deployment checklist</td></tr>
+          <tr><td class="sn">kubernetes-operator</td><td><span class="badge b-yellow">spec</span></td><td class="sd">Manifest review · pod debugging patterns · RBAC · resource limits</td></tr>
+          <tr><td class="sn">docker-specialist</td><td><span class="badge b-yellow">spec</span></td><td class="sd">Multi-stage Dockerfile · non-root user · health checks · Docker Compose dev setup</td></tr>
+          <tr><td class="sn">+ 15 more spec skills</td><td><span class="badge b-yellow">spec</span></td><td class="sd">performance-profiler · observability-engineer · frontend-architect · ui-ux-enhancer · scraping-specialist · browser-automation · and more</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ─── SKILL EXAMPLES ─── -->
+  <section class="doc-section" id="skill-examples">
+    <div class="section-tag">Running skills</div>
+    <h2>How to use skills.</h2>
+
+    <pre><span class="c"># List all skills grouped by status</span>
+<span class="s">omnix skills</span>
+
+<span class="c"># Search skills by keyword</span>
+<span class="s">omnix skills <span class="k">--filter</span> security</span>
+<span class="s">omnix skills <span class="k">--filter</span> devops</span>
+
+<span class="c"># Read the full instructions for a skill</span>
+<span class="s">omnix skills inspect test-architect</span>
+
+<span class="c"># Run a live skill against your project</span>
+<span class="s">omnix skills <span class="k">--run</span> repo-scanner</span>
+<span class="s">omnix skills <span class="k">--run</span> security-threat-modeler</span>
+<span class="s">omnix skills <span class="k">--run</span> test-architect <span class="k">--input</span> "src/auth/login.ts"</span>
+<span class="s">omnix skills <span class="k">--run</span> debugging-specialist <span class="k">--input</span> "ECONNREFUSED 5432"</span>
+<span class="s">omnix skills <span class="k">--run</span> release-manager <span class="k">--input</span> "0.2.0"</span>
+
+<span class="c"># Dry-run (shows what would be written to vault, no writes)</span>
+<span class="s">omnix skills <span class="k">--run</span> dependency-doctor <span class="k">--dry-run</span></span>
+
+<span class="c"># Activate a skill in Claude Code (adds @import to CLAUDE.md)</span>
+<span class="s">omnix skills activate debugging-specialist</span>
+<span class="s">omnix skills activate security-threat-modeler</span>
+
+<span class="c"># Schema check all skill files</span>
+<span class="s">omnix skills doctor</span></pre>
+  </section>
+
+  <!-- ─── COMMANDS ─── -->
+  <section class="doc-section wide" id="commands">
+    <div class="section-tag">CLI Reference</div>
+    <h2>All 22 commands.</h2>
+
+    <div id="cmd-setup" class="cmd-group">
+      <div class="cmd-group-label">Setup &amp; inspection</div>
+      <div class="cmd-row"><span class="cmd-name">omnix init</span><span class="cmd-desc">Interactive full setup — vault + adapters + .gitignore</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix init --yes</span><span class="cmd-desc">Non-interactive, accept all defaults</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix init --dry-run</span><span class="cmd-desc">Preview all planned writes, touch nothing</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix tutorial</span><span class="cmd-desc">5-step interactive walkthrough (new users start here)</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix tutorial --step N</span><span class="cmd-desc">Jump directly to a specific step (1–5)</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix status</span><span class="cmd-desc">Health score 0–100 · vault stats · adapters · next steps</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix detect</span><span class="cmd-desc">List every installed Omnix file in this project</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix doctor</span><span class="cmd-desc">Health check: adapters present, vault folders, cross-refs valid</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix verify</span><span class="cmd-desc">Confirm convention files are AI-readable (not empty/template)</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix scan</span><span class="cmd-desc">Detect stack, frameworks, AI tools, package manager</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix scan --write</span><span class="cmd-desc">Write detection results to 02-PROJECTS/ in vault</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix scan --deep</span><span class="cmd-desc">Code intelligence: entry points, hotspots, test gaps, risks</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix install-adapters --adapters &lt;list&gt;</span><span class="cmd-desc">Install adapter files for specific AI tools</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix update</span><span class="cmd-desc">Update installed adapter files to the latest version</span></div>
+    </div>
+
+    <div id="cmd-memory" class="cmd-group">
+      <div class="cmd-group-label">Memory &amp; context</div>
+      <div class="cmd-row"><span class="cmd-name">omnix retrieve-context --task &lt;desc&gt;</span><span class="cmd-desc">Load ranked vault context with token budget (auto-detects mode)</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix context-pack --mode &lt;mode&gt;</span><span class="cmd-desc">Bounded ≤3000-token context snapshot for current task</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix session-digest --tool &lt;name&gt;</span><span class="cmd-desc">Write a session digest to 01-SESSIONS/</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix session-digest --auto</span><span class="cmd-desc">Auto-generate from git diff — no manual input required</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix diff</span><span class="cmd-desc">Files changed since last session digest (git-aware)</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix error-match &lt;error text&gt;</span><span class="cmd-desc">BM25 search of error-memory.md for past fixes</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix check-secrets</span><span class="cmd-desc">Scan vault + .omnix/ for leaked API keys, tokens, passwords</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix check-secrets --json</span><span class="cmd-desc">Machine-readable output (exit 1 if found — use in CI)</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix memory --compact</span><span class="cmd-desc">Compress sessions + prune archives + update vault index</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix memory --stats</span><span class="cmd-desc">Per-folder file counts and sizes — spot vault bloat</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix sync-memory --compress</span><span class="cmd-desc">Compress sessions older than 7 days into weekly summaries</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix sync-memory --prune 90</span><span class="cmd-desc">Archive sessions older than N days</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix vault validate</span><span class="cmd-desc">Schema validation — required folders, digest fields, error entries</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix vault streak</span><span class="cmd-desc">ASCII heatmap · current streak · longest streak · total sessions</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix vault migrate</span><span class="cmd-desc">Upgrade vault schema version (v1.0 → v1.1 etc.)</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix vault self-test</span><span class="cmd-desc">Verify installed adapters actually reference vault content</span></div>
+    </div>
+
+    <div id="cmd-skills" class="cmd-group">
+      <div class="cmd-group-label">Skills</div>
+      <div class="cmd-row"><span class="cmd-name">omnix skills</span><span class="cmd-desc">List all skills grouped: stable / experimental / auto-active</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix skills --filter &lt;kw&gt;</span><span class="cmd-desc">Search skills by name, description, or trigger keyword</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix skills inspect &lt;name&gt;</span><span class="cmd-desc">Print full SKILL.md for a skill (steps, examples, memory policy)</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix skills --run &lt;name&gt;</span><span class="cmd-desc">Execute skill runtime handler against your project</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix skills --run &lt;name&gt; --input &lt;text&gt;</span><span class="cmd-desc">Pass context to the skill handler (error text, task desc, etc.)</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix skills --run &lt;name&gt; --dry-run</span><span class="cmd-desc">Preview vault writes without actually writing</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix skills activate &lt;name&gt;</span><span class="cmd-desc">Add skill @import to CLAUDE.md Active Skills section</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix skills deactivate &lt;name&gt;</span><span class="cmd-desc">Comment out skill import in CLAUDE.md</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix skills doctor</span><span class="cmd-desc">Schema compliance check on all installed skill files</span></div>
+    </div>
+
+    <div id="cmd-hooks" class="cmd-group">
+      <div class="cmd-group-label">Routing, hooks &amp; research</div>
+      <div class="cmd-row"><span class="cmd-name">omnix route "&lt;task&gt;"</span><span class="cmd-desc">Deterministic routing → workflow + agents + skills (no LLM)</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix team-plan "&lt;task&gt;"</span><span class="cmd-desc">Multi-role reasoning checklist for complex cross-domain tasks</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix hooks --list</span><span class="cmd-desc">Show installed git hooks and their status</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix hooks --install pre-commit</span><span class="cmd-desc">Block commits that contain secrets in vault files</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix hooks --install post-commit</span><span class="cmd-desc">Auto-write session digest after every git commit</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix hooks --install all</span><span class="cmd-desc">Install both hooks at once</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix hooks --uninstall &lt;hook&gt;</span><span class="cmd-desc">Remove a hook installed by Omnix (won't remove non-Omnix hooks)</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix research "npm &lt;name&gt;"</span><span class="cmd-desc">Vault-cached npm registry lookup</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix research "github owner/repo"</span><span class="cmd-desc">Vault-cached GitHub repo info</span></div>
+      <div class="cmd-row"><span class="cmd-name">omnix research "node lts"</span><span class="cmd-desc">Current Node.js LTS and latest version</span></div>
+    </div>
+  </section>
+
+  <!-- ─── FEATURES ─── -->
+  <section class="doc-section wide" id="features">
+    <div class="section-tag">Features</div>
+    <h2>Everything in one place.</h2>
+    <div class="feat-grid">
+      <div class="feat-card">
+        <span class="feat-icon">🧠</span>
+        <h3>Obsidian Memory Vault</h3>
+        <p>11-folder plain-markdown vault. Session digests, error memory, ADRs, architecture, lessons. Open in Obsidian or any editor.</p>
+        <span class="badge b-green">Working</span>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">⚡</span>
+        <h3>10 Live Skill Engines</h3>
+        <p>Real code that analyses your project: debugging, testing, security scanning, dependency audit, release checklists, documentation drift.</p>
+        <span class="badge b-green">Working</span>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">🔌</span>
+        <h3>9 AI Tool Adapters</h3>
+        <p>Claude Code, Cursor, Windsurf, Cline, Roo, Continue, Aider, OpenHands, Generic. Each gets the right format for its rules file.</p>
+        <span class="badge b-green">Working</span>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">🔀</span>
+        <h3>Deterministic Routing</h3>
+        <p>Rule-based task routing with zero LLM cost. Maps any request to workflow + agents + skills in &lt;1ms. Works offline.</p>
+        <span class="badge b-green">Working</span>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">🛡️</span>
+        <h3>Secret Scanner</h3>
+        <p>Scans vault for API keys, JWTs, database passwords, PEM blocks. Exits with code 1 for CI pipelines. Pre-commit hook available.</p>
+        <span class="badge b-green">Working</span>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">📊</span>
+        <h3>Health Score Dashboard</h3>
+        <p>omnix status: 0–100 score, ASCII progress bar, vault stats, installed adapters, personalised next steps.</p>
+        <span class="badge b-green">Working</span>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">🔗</span>
+        <h3>Git Hook Integration</h3>
+        <p>pre-commit blocks secrets. post-commit auto-writes digests. Cross-platform. Won't overwrite existing non-Omnix hooks.</p>
+        <span class="badge b-green">Working</span>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">🔍</span>
+        <h3>Error Memory Search</h3>
+        <p>BM25 relevance search of past bug fixes. Search before you diagnose. error-intelligence skill records new fixes with dedup check.</p>
+        <span class="badge b-green">Working</span>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">📦</span>
+        <h3>Vault Lifecycle</h3>
+        <p>Validate schema, compress old sessions, prune archives, migrate between schema versions, run activity heatmap.</p>
+        <span class="badge b-green">Working</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── STATUS ─── -->
+  <section class="doc-section wide" id="status">
+    <div class="section-tag">Project Status</div>
+    <h2>What works. What's spec. Honest.</h2>
+    <div style="overflow-x:auto">
+      <table class="status-table">
+        <thead><tr><th>Component</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>CLI — 22 commands</td><td><span class="st st-ok">✓ Working</span></td><td>126/126 tests pass. 582 KB build.</td></tr>
+          <tr><td>10 skill runtime handlers</td><td><span class="st st-ok">✓ Working</span></td><td>debug · test · security · DevOps · release · docs · repo · deps · context · routing</td></tr>
+          <tr><td>Vault scaffolding (11 folders)</td><td><span class="st st-ok">✓ Working</span></td><td></td></tr>
+          <tr><td>Adapters: Claude Code, Cursor, Generic, Aider</td><td><span class="st st-ok">✓ Working</span></td><td>Stable. Tested.</td></tr>
+          <tr><td>Adapters: Windsurf, Cline, Roo, Continue, OpenHands</td><td><span class="st st-exp">⚠ Templates</span></td><td>File paths may not match current tool versions.</td></tr>
+          <tr><td>Secret sanitization + check-secrets scanner</td><td><span class="st st-ok">✓ Working</span></td><td>Redacts before vault write. Scanner exits 1 for CI.</td></tr>
+          <tr><td>Vault migration system</td><td><span class="st st-ok">✓ Working</span></td><td>v1.0 → v1.1. Version marker written on init.</td></tr>
+          <tr><td>Git hooks (pre-commit + post-commit)</td><td><span class="st st-ok">✓ Working</span></td><td>Cross-platform. Respects existing non-Omnix hooks.</td></tr>
+          <tr><td>Activity streak heatmap</td><td><span class="st st-ok">✓ Working</span></td><td>omnix vault streak</td></tr>
+          <tr><td>20 remaining skill specs</td><td><span class="st st-sp">SPEC</span></td><td>Guided instructions. No runtime handler yet.</td></tr>
+          <tr><td>omnix research</td><td><span class="st st-exp">⚠ Limited</span></td><td>Handles: npm packages, GitHub repos, Node.js versions only.</td></tr>
+          <tr><td>Parallel team mode / swarm</td><td><span class="st st-sp">SPEC</span></td><td>Single-session reasoning checklist. Not concurrent processes.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ─── FAQ ─── -->
+  <section class="doc-section" id="faq">
+    <div class="section-tag">FAQ</div>
+    <h2>Common questions.</h2>
+
+    <h3 style="margin-top:24px">Does Omnix require Obsidian?</h3>
+    <p>No. The vault is plain markdown files. Obsidian is optional — it adds graph view and backlinks if you want them.</p>
+
+    <h3 style="margin-top:20px">Does Omnix call any AI API?</h3>
+    <p>No. Omnix is a local CLI. No network calls except <code>omnix research</code> which queries npm/GitHub/Node.js registries (with vault caching).</p>
+
+    <h3 style="margin-top:20px">Will it work with my AI tool?</h3>
+    <p>It will work with any tool that reads project rule files. Claude Code and Cursor have the best compliance. The effect with other tools depends entirely on whether the tool loads and follows the rule files.</p>
+
+    <h3 style="margin-top:20px">The Windsurf/Cline/Roo adapter isn't loading.</h3>
+    <p>These are TEMPLATE adapters. Their file paths change frequently. Check each tool's current documentation for the correct rules file location, then compare it with what Omnix installed.</p>
+
+    <h3 style="margin-top:20px">My health score is 70 after init. Is that bad?</h3>
+    <p>No, that's normal. Run <code>omnix scan --write</code> to populate project-context.md. That alone takes it to ~85. The score improves naturally as you use the tool.</p>
+
+    <h3 style="margin-top:20px">Can I add my own skills?</h3>
+    <p>Yes. Create a <code>SKILL.md</code> with required frontmatter in <code>.omnix/skills/&lt;name&gt;/</code>. It will appear in <code>omnix skills</code> automatically. See <code>packages/skills/debugging-specialist/SKILL.md</code> for the format.</p>
+
+    <h3 style="margin-top:20px">Will Omnix commit secrets to my vault?</h3>
+    <p>Session digests are sanitized before writing. <code>.omnix/memory/</code> is auto-added to <code>.gitignore</code>. The pre-commit hook blocks accidental secret commits. That said: never commit your vault to a public repo — treat it like <code>.env</code>.</p>
+
+    <h3 style="margin-top:20px">How do the reference repos (Agent-Skills, gstack, etc.) relate?</h3>
+    <p>They were pattern sources used during development — patterns were extracted and are now baked into Omnix's skill system and architecture. Those repos are no longer needed and have been removed from the workspace.</p>
+  </section>
+
+  <!-- ─── CTA ─── -->
+  <div class="cta-section">
+    <div class="cta-glow"></div>
+    <h2>Give your AI tool<br><span class="grad">a persistent memory.</span></h2>
+    <p>Free. MIT licensed. No API keys. No cloud. Files only.</p>
+    <div class="cta-row" style="justify-content:center;margin-bottom:28px">
+      <a href="#install" class="btn btn-primary" style="font-size:15px;padding:13px 26px">Install Omnix →</a>
+      <a href="https://github.com/Abhiram1106/omnix" class="btn btn-outline" style="font-size:15px;padding:13px 26px">GitHub →</a>
+    </div>
+    <div class="install-row" style="margin:0 auto">
+      <span style="color:var(--dim)">$</span>
+      <span class="install-cmd">npx create-omnix</span>
+      <button class="copy-btn" onclick="navigator.clipboard.writeText('npx create-omnix');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1600)">Copy</button>
+    </div>
+  </div>
+
+  <footer>
+    <div>
+      <strong style="color:var(--text)">omnix</strong> v0.1.0 &nbsp;·&nbsp;
+      <a href="https://github.com/Abhiram1106/omnix">GitHub</a> &nbsp;·&nbsp;
+      <a href="https://www.npmjs.com/package/omnix">npm</a> &nbsp;·&nbsp;
+      MIT license
+    </div>
+    <div style="color:var(--dim)">Files, not magic. Your AI tool reads what Omnix writes.</div>
+  </footer>
+
+</main>
+
+<script>
+  // ── Sidebar toggle (mobile) ───────────────────────────────
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+  }
+  document.addEventListener('click', (e) => {
+    const sidebar = document.getElementById('sidebar');
+    const ham = document.getElementById('ham');
+    if (sidebar.classList.contains('open') && !sidebar.contains(e.target) && !ham.contains(e.target)) {
+      sidebar.classList.remove('open');
+    }
+  });
+
+  // ── Tutorial accordion ────────────────────────────────────
+  function toggleTut(header) {
+    const card = header.parentElement;
+    card.classList.toggle('open');
+  }
+
+  // ── Active sidebar link tracking ─────────────────────────
+  const sections = document.querySelectorAll('[id]');
+  const sidebarLinks = document.querySelectorAll('.sidebar-link');
+  const topLinks = document.querySelectorAll('.topbar-center a');
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        sidebarLinks.forEach(l => {
+          l.classList.toggle('active', l.getAttribute('href') === `#${id}`);
+        });
+        topLinks.forEach(l => {
+          l.classList.toggle('active', l.getAttribute('href') === `#${id}`);
+        });
+      }
+    });
+  }, { rootMargin: '-20% 0px -60% 0px' });
+
+  sections.forEach(s => io.observe(s));
+
+  // ── Close sidebar on link click (mobile) ─────────────────
+  sidebarLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      document.getElementById('sidebar').classList.remove('open');
+    });
+  });
+</script>
+</body>
+</html>

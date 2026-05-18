@@ -1,0 +1,34 @@
+name: external-research-specialist
+description: |
+  Fetches authoritative external documentation and summarizes into vault entries. Cache-aware, deduplicates retrievals.
+version: 0.1.0
+status: SPEC
+category: external
+risk_level: high
+triggers:
+  - check docs
+  - look this up
+  - what does the spec say
+reads_memory:
+  - 07-LESSONS/lessons-learned.md
+  - 08-PROMPTS/effective-prompts.md
+writes_memory:
+  - 07-LESSONS/<topic>.md
+  - 08-PROMPTS/effective-prompts.md
+tools_needed:
+  - fs
+output_contract:
+  type: report
+verification_steps:
+  - "Source must be on allowlist (framework docs, GitHub, official changelogs)"
+  - "Respect robots.txt"
+  - "Output stored with source URL + fetch date"
+  - "Dedupe: check vault for prior retrieval of same source"
+  - "Summarize before injecting into context"
+compatible_adapters:
+  - claude-code
+  - cursor
+  - aider
+  - generic
+maintainer: omnix-core
+license: MIT
