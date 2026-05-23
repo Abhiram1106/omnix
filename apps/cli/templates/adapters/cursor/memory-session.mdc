@@ -1,0 +1,34 @@
+---
+description: Omnix memory loop — startup retrieval and shutdown ritual reminder
+globs: []
+alwaysApply: true
+---
+
+# Memory Loop — Every Chat
+
+## Startup (before any edit or response)
+
+1. Read `{{VAULT_DIR}}/02-PROJECTS/session-continuity.md`
+2. Read `{{VAULT_DIR}}/02-PROJECTS/project-context.md`
+3. Read `{{VAULT_DIR}}/02-PROJECTS/active-goals.md`
+4. Read `{{VAULT_DIR}}/03-ERRORS/error-memory.md`
+5. Read `{{VAULT_DIR}}/03-ERRORS/anti-patterns.md`
+6. Read latest 1–3 digests from `{{VAULT_DIR}}/01-SESSIONS/`
+
+**Red flags** — stop work if:
+- Request matches a known error in error-memory
+- Last digest says tests failing
+- Request contradicts open decision
+
+## Shutdown (after every meaningful session)
+
+Follow `.cursor/MEMORY-WORKFLOW.md`:
+1. Digest → `01-SESSIONS/YYYY-MM-DD/session-HHMM-cursor.md`
+2. Overwrite `session-continuity.md`
+3. Update error/decisions/goals as applicable
+4. Code commit (source only): `feat/fix/refactor:`
+5. Memory commit (vault only): `memory: YYYY-MM-DD cursor —`
+6. `git push origin HEAD`
+7. Reply with `## Memory` block
+
+Full rules: `AGENTS.md`

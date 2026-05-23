@@ -1,139 +1,194 @@
-# AGENTS.md — Omnix
+# AGENTS.md
 
-> Source of truth for all AI tool adapters. Every adapter points here.
-> Read this file at the start of every session.
+> **Single source of truth for every AI adapter.**
+> Every tool config (CLAUDE.md, .cursorrules, .cursor/rules/, windsurf, cline) points here.
+> Do not duplicate rules into adapter files — adapters add mechanism, not rules.
 
-## Startup protocol
+---
 
-Before any response, edit, or command:
+## 1. Startup protocol
 
-1. Detect Omnix markers in this project (`.obsidian-ai-memory/`, `.omnix/`, `AGENTS.md`).
-2. Identify project type and stack from manifests.
-3. Retrieve relevant memory from `.obsidian-ai-memory/` using task-type-aware priority:
-   - **debug/error task** → load error-memory first, then project-context
-   - **feature task** → load project-context + active-goals first
-   - **architecture task** → load 05-ARCHITECTURE/ + decisions first
-   - **default** → project-context → active-goals → last 3 sessions → error-memory
-4. Auto-route to the correct workflow based on request signals.
-5. Activate required agent roles (see routing table below).
-6. Emit a compact startup block, then begin work.
+**Before any response, edit, or command — do this in order:**
 
-**Startup block format:**
-```
-[Omnix] Project: {name} | Stack: {stack} | Mode: {retrieval-mode}
-Loaded: {files-loaded} | Known errors: {N} | Last session: {date}
-Routing: {workflow} | Agents: {roles}
-```
+1. Read `{{VAULT_DIR}}/02-PROJECTS/session-continuity.md` — rolling handoff from last chat
+2. Read `{{VAULT_DIR}}/02-PROJECTS/project-context.md` — stack, constraints, do-not-repeat
+3. Read `{{VAULT_DIR}}/02-PROJECTS/active-goals.md` — current week priorities
+4. Read `{{VAULT_DIR}}/03-ERRORS/error-memory.md` — known bugs, never repeat
+5. Read `{{VAULT_DIR}}/03-ERRORS/anti-patterns.md` — promoted prevention rules
+6. Read latest 1–3 digests from `{{VAULT_DIR}}/01-SESSIONS/` — context continuity
+7. If architecture/design task → also read `{{VAULT_DIR}}/04-DECISIONS/decisions.md`
+8. If debug task → skip step 7, re-read error-memory with higher priority
+9. Begin work
 
-## Memory loop
+**Token budgets (stop reading when hit):**
+- `minimal` (~400 tokens) — project-context only. Use for one-liner answers.
+- `balanced` (~1500 tokens) — steps 1–6. Default for most tasks.
+- `deep` (~3000 tokens) — all steps. Use for architecture, refactors, complex features.
+- `debugging` (~2000 tokens) — steps 4–5 first, then 1–3. Use when diagnosing errors.
+- `architecture` (~4000 tokens) — step 7 prioritized, then steps 1–3. Use for design tasks.
 
-**Before work** — retrieve in this priority order, stop when budget hit (balanced = ~1500 tokens):
-1. `02-PROJECTS/project-context.md` — always
-2. `02-PROJECTS/active-goals.md` — always
-3. `02-PROJECTS/vault-index.md` — if exists (lightweight session index)
-4. `03-ERRORS/error-memory.md` — always (never repeat known errors)
-5. `03-ERRORS/anti-patterns.md` — always
-6. `04-DECISIONS/decisions.md` — for architecture/design tasks
-7. `05-ARCHITECTURE/` — for architecture tasks
-8. `01-SESSIONS/` last 3 — for context continuity
+**Red flags — stop work and surface to user if:**
+- The user's request matches a known error in `error-memory.md`
+- Last digest says tests were failing or build was broken
+- The request contradicts an open decision in `decisions.md`
+- Active goals don't match the user's stated priority
 
-**After work** — write only when the condition applies:
-- Session digest → `01-SESSIONS/YYYY-MM-DD/session-HHMM-<tool>.md` (meaningful work only)
-- Error fix → `03-ERRORS/error-memory.md` (always when a bug is fixed)
-- Decision → `04-DECISIONS/decisions.md` (non-trivial choices with rationale)
-- State change → `02-PROJECTS/current-state.md` (when project status changes)
+---
 
-## Mandatory rules
+## 2. Mandatory engineering rules
 
-**Position-critical rules (read first, highest recall):**
+**Critical (highest recall — non-negotiable):**
 
-1. **Always retrieve memory before answering or editing.** Context from vault prevents repeated mistakes.
-2. **Never repeat known errors.** Check `03-ERRORS/error-memory.md` before diagnosing.
-3. **Never expose secrets.** No API keys, tokens, passwords, or private keys in any file.
-4. **Ask before destructive operations.** Confirm before: `rm`, `drop table`, force push, hard reset, migrations.
-5. **Run verification before claiming done.** Tests pass + typecheck clean + no regressions.
+1. **Always retrieve memory before answering or editing.** Prevents repeating known mistakes.
+2. **Never repeat known errors.** Check `03-ERRORS/error-memory.md` before diagnosing anything.
+3. **Never expose secrets.** No API keys, tokens, passwords, private keys, or DB URIs in any file.
+4. **Confirm before destructive operations.** Stop and ask before: `rm`, `DROP TABLE`, force push, `git reset --hard`, running migrations against production, overwriting with `--force`, publishing packages.
+5. **Verify before claiming done.** Tests pass + typecheck clean + no regressions in adjacent code.
 
 **Supporting rules:**
 
-6. Never ignore existing project conventions (naming, error handling, async patterns).
-7. Update docs when behavior or setup changes.
-8. Prefer small safe changes over large rewrites.
-9. Record assumptions made (they may be wrong).
-10. Record unresolved questions (they may block others).
-11. Update memory after meaningful work.
+6. Follow existing project conventions — naming, error handling, async patterns, file structure.
+7. Update docs when behavior or setup changes (not just code).
+8. Prefer small, safe, targeted changes over large rewrites.
+9. Record assumptions explicitly — they may be wrong and should be verifiable.
+10. Record unresolved questions — they may block others or resurface.
+11. Update memory after meaningful work (bug fixed, decision made, architecture changed).
 
-## Agent routing
+---
 
-| Request signal | Workflow | Activate roles |
-|----------------|----------|----------------|
+## 3. Agent routing
+
+Auto-route based on request signals before starting work:
+
+| Signal keywords | Workflow | Activate roles |
+|-----------------|----------|----------------|
 | build / add / implement / create | feature-build | architect + fullstack + reviewer |
 | error / broken / crash / failing / exception | debugging → bug-fix | debugger + security |
 | test failing / test broken | bug-fix + testing | debugger + qa |
 | review / audit / check quality | code-review | reviewer + security |
 | refactor / clean / improve / simplify | refactor | architect + reviewer |
-| deploy / ship / release / publish | deployment | devops (specialized) |
-| slow / performance / optimize | debugging + performance | debugger + performance (specialized) |
-| docs / readme / document / runbook | docs-update | docs (specialized) |
-| security / auth / vulnerability / CVE | code-review + security | security + reviewer |
-| schema / migration / database / query | feature-build + database | architect + database (specialized) |
-| first run / empty vault / setup | project-onboarding | fullstack |
+| deploy / ship / release / publish | deployment | devops |
+| slow / performance / optimize / lag | debugging + performance | debugger + performance |
+| docs / readme / document / runbook / changelog | docs-update | docs |
+| security / auth / vulnerability / CVE / injection | code-review + security | security + reviewer |
+| schema / migration / database / query / ORM | feature-build + database | architect + database |
+| first run / empty vault / setup / onboard | project-onboarding | fullstack |
 
-## Safety rules
+---
 
-Before any of these operations, **stop and confirm with user**:
-- Delete files or directories
-- Drop or truncate database tables
-- Force push to any branch
-- `git reset --hard`
-- Run database migrations against production
-- Overwrite files with `--force`
-- Publish packages to npm/PyPI
+## 4. Skill system
 
-## Skill discovery
+Before acting on any task, check if an Omnix skill covers it:
 
-Before acting on any task, check if a relevant Omnix skill exists:
+| Task type | Skill |
+|-----------|-------|
+| Debugging / root cause | `debugging-specialist` + `error-intelligence` |
+| Test strategy / gaps | `test-architect` |
+| Security review / STRIDE | `security-threat-modeler` |
+| Codebase intelligence | `repo-scanner` |
+| Dependency audit / CVE | `dependency-doctor` |
+| Documentation drift | `documentation-maintainer` |
+| Release checklist | `release-manager` |
+| Workflow routing | `workflow-router` |
+| Context management | `context-manager` |
 
-```
-packages/skills/              — 30 superpower skills (DevOps, security, testing, etc.)
-packages/core/skills/         — core context + memory skills
-.omnix/skills/                — user-installed skills
-```
+Skill location: `{{VAULT_DIR}}/../.omnix/` or installed project skills directory.
+If a skill's triggers match the task, read the SKILL.md file before proceeding.
 
-**Skill lookup by task type:**
+---
 
-| Task type | Recommended skill |
-|-----------|------------------|
-| Debugging / errors | `debugging-specialist` + `error-intelligence` |
-| Test strategy | `test-architect` |
-| Security review | `security-threat-modeler` |
-| API design review | `api-contract-reviewer` |
-| Database migration | `database-migration-guard` |
-| Docker/containers | `docker-specialist` |
-| Kubernetes | `kubernetes-operator` |
-| CI/CD pipeline | `ci-cd-engineer` |
-| Performance issues | `performance-profiler` |
-| Monitoring/alerts | `observability-engineer` |
-| Frontend/React | `frontend-architect` |
-| UI/UX improvements | `ui-ux-enhancer` |
-| Web scraping | `scraping-specialist` |
-| External research | `external-research-specialist` |
-| Browser automation | `browser-automation-specialist` |
-| Documentation | `documentation-maintainer` |
-| Release/publish | `release-manager` |
-| Prompt quality | `prompt-instruction-linter` |
-| Dependency audit | `dependency-doctor` |
-| Vault maintenance | `memory-curator` |
+## 5. Memory write rules (memory loop)
 
-**Activation:** If the task matches a skill's triggers, read its SKILL.md before proceeding. The skill defines exact steps, memory reads/writes, and verification.
-
-## When to write a digest
-
-Write when:
+**Write session digest when:**
 - Files were meaningfully changed
 - A bug was fixed
-- A significant decision was made
+- A decision was made
 - Session lasted > 15 minutes
 
-Skip for: one-liner answers, exploratory reading, read-only sessions.
+**Skip digest for:** one-liner answers, exploratory reading, read-only sessions.
 
-Use `--auto` for a minimal 3-field digest from git diff: `omnix session-digest --auto --tool <tool-name>`
+**After every meaningful session — do all that apply:**
+
+| What happened | Write to |
+|---------------|----------|
+| Always (if meaningful) | `01-SESSIONS/YYYY-MM-DD/session-HHMM-<tool>.md` (append or create) |
+| Always (if meaningful) | `02-PROJECTS/session-continuity.md` (overwrite — this is the handoff file) |
+| Bug fixed | `03-ERRORS/error-memory.md` (append entry) |
+| Pattern repeating | `03-ERRORS/anti-patterns.md` (append promotion rule) |
+| Decision made | `04-DECISIONS/decisions.md` (append ADR entry) |
+| Architecture changed | `05-ARCHITECTURE/` (update relevant file) |
+| Project state changed | `02-PROJECTS/current-state.md` (overwrite) |
+| Goals updated | `02-PROJECTS/active-goals.md` (update checkboxes) |
+
+**Append-only files** (never edit history): `error-memory.md`, `decisions.md`, `anti-patterns.md`, session digests.
+**Overwrite-only files** (represent "right now"): `session-continuity.md`, `current-state.md`.
+
+---
+
+## 6. Shutdown protocol (two-commit pattern)
+
+At the end of every meaningful session:
+
+```
+1. Write session digest → 01-SESSIONS/YYYY-MM-DD/session-HHMM-<tool>.md
+2. Overwrite session-continuity.md with next-chat handoff
+3. Update error-memory / decisions / active-goals as applicable
+4. CODE COMMIT: scoped to changed source files only
+   Message: feat(scope): ... or fix(scope): ... or refactor(scope): ...
+   Never include vault files in this commit.
+5. MEMORY COMMIT: vault files only
+   Message: memory: YYYY-MM-DD <tool> — <one-line summary>
+   Never include source files in this commit.
+6. git push origin HEAD (unless user explicitly declines)
+7. Final reply must include a ## Memory block:
+   - Digest: 01-SESSIONS/YYYY-MM-DD/session-HHMM-<tool>.md
+   - Code commit: <hash> feat(scope): ...
+   - Memory commit: <hash> memory: YYYY-MM-DD ...
+   - Push: ✓ pushed / ✗ declined / ✗ failed (reason)
+```
+
+**Why two commits:** `git log --grep="memory:"` reconstructs the full cross-tool handoff history without polluting application history.
+
+---
+
+## 7. Safety gates
+
+Stop and wait for explicit user confirmation before any of:
+
+- Deleting files or directories
+- Dropping or truncating database tables
+- Force-pushing to any branch
+- `git reset --hard`
+- Running migrations against a production database
+- Writing real values to `.env` files
+- Publishing packages to npm, PyPI, or any registry
+- Overwriting files with `--force` when backup is unclear
+
+---
+
+## 8. What never goes in memory
+
+Do not write to the vault:
+- Raw code blocks (reference file paths instead)
+- Secrets, tokens, API keys, DB credentials
+- Duplicate content already in another vault file
+- Speculation without factual basis
+- Full stack traces (symptom + root cause + fix is enough)
+- Absolute paths to the user's home directory
+- Unfinished thoughts or TODO-only entries
+
+---
+
+## 9. The session-continuity.md contract
+
+`02-PROJECTS/session-continuity.md` is the **most important file in the vault**.
+It is overwritten at the end of every session. It contains:
+
+- Where we left off (2–3 sentences)
+- Active thread (max 5 bullets — what's in flight)
+- Current week goal (from active-goals.md)
+- Verification state (last known: tests passing / failing / unknown)
+- Next 3 tasks (concrete, ordered)
+- Open risks (what could break, what's unresolved)
+
+Any tool that reads this file first can pick up exactly where any other tool left off.

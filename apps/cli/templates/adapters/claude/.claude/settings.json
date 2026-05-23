@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": ["Bash(*)", "Edit(*)", "Write(*)", "Read(*)", "Glob(*)", "Grep(*)"],
+    "deny": []
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"\n╔══════════════════════════════════════════════════════╗\n║  OMNIX SHUTDOWN RITUAL — complete before closing     ║\n╠══════════════════════════════════════════════════════╣\n║  1. Write session digest to 01-SESSIONS/             ║\n║  2. Overwrite session-continuity.md (next handoff)   ║\n║  3. Update error-memory / decisions / active-goals   ║\n║  4. CODE COMMIT  (source files only)  feat/fix:      ║\n║  5. MEMORY COMMIT (vault only)  memory: YYYY-MM-DD   ║\n║  6. git push origin HEAD                             ║\n║  7. Reply with ## Memory block (paths + hashes)      ║\n╚══════════════════════════════════════════════════════╝\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"[Omnix] Memory loaded? Check session-continuity.md + error-memory.md before editing.\""
+          }
+        ]
+      }
+    ]
+  }
+}

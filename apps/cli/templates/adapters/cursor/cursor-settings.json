@@ -1,0 +1,24 @@
+{
+  "alwaysInclude": [
+    "{{VAULT_DIR}}/02-PROJECTS/session-continuity.md",
+    "{{VAULT_DIR}}/02-PROJECTS/project-context.md",
+    "{{VAULT_DIR}}/02-PROJECTS/active-goals.md",
+    "{{VAULT_DIR}}/02-PROJECTS/vault-index.md",
+    ".cursor/MEMORY-WORKFLOW.md"
+  ],
+  "indexing": {
+    "include": [
+      "{{VAULT_DIR}}/02-PROJECTS/**",
+      "{{VAULT_DIR}}/03-ERRORS/**",
+      "{{VAULT_DIR}}/04-DECISIONS/**",
+      "{{VAULT_DIR}}/05-ARCHITECTURE/**"
+    ],
+    "exclude": [
+      "{{VAULT_DIR}}/01-SESSIONS/**",
+      "{{VAULT_DIR}}/templates/**",
+      "node_modules/**",
+      "dist/**",
+      ".git/**"
+    ]
+  }
+}

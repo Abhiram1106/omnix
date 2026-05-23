@@ -4,41 +4,51 @@ Run through this before every publish.
 
 ## Code quality
 
-- [ ] `pnpm typecheck` — zero errors.
-- [ ] `pnpm build` — clean build, no warnings.
-- [ ] `pnpm lint` — clean (if linter configured).
+- [ ] `pnpm typecheck` — zero errors
+- [ ] `pnpm build` — clean build, no warnings
+- [ ] `pnpm test` — 126/126 tests passing
+
+## Version
+
+- [ ] Version bumped in `apps/cli/package.json`
+- [ ] `src/index.ts` VERSION reads from `package.json` — no manual update needed
+- [ ] CHANGELOG.md entry added for the new version
 
 ## Package contents
 
-- [ ] `cd apps/cli && npm pack --dry-run` — review output.
-- [ ] `dist/` present in tarball.
-- [ ] `templates/` present in tarball — all adapter and vault templates.
-- [ ] `README.md` present.
-- [ ] `LICENSE` present (add file if missing).
-- [ ] No `.env`, `node_modules`, `.obsidian-ai-memory/`, or user data.
-- [ ] `dist/index.js` first line is `#!/usr/bin/env node`.
+- [ ] `cd apps/cli && pnpm run publish:dry` — review tarball output
+- [ ] `dist/` present in tarball
+- [ ] `templates/` present — all adapter and vault templates included
+- [ ] `README.md` and `LICENSE` present
+- [ ] No `.env`, `node_modules`, `.obsidian-ai-memory/`, or user data in tarball
+- [ ] `bin/omnix.js` first line is `#!/usr/bin/env node`
 
-## Functionality
+## Local smoke test
 
-- [ ] `node apps/cli/dist/index.js --help` works locally.
-- [ ] `node apps/cli/dist/index.js init --dry-run` works.
-- [ ] `node apps/cli/dist/index.js scan` works.
-- [ ] `node apps/cli/dist/index.js detect` works.
-- [ ] `node apps/cli/dist/index.js route "add auth"` works.
+```bash
+node apps/cli/dist/index.js --version    # matches package.json version
+node apps/cli/dist/index.js --help       # all commands listed
+node apps/cli/dist/index.js init --dry-run
+node apps/cli/dist/index.js scan
+node apps/cli/dist/index.js detect
+node apps/cli/dist/index.js route "add auth"
+```
 
-## Version and changelog
+## Publish
 
-- [ ] Version bumped in `apps/cli/package.json`.
-- [ ] `CHANGELOG.md` entry added.
-- [ ] Git tag created: `git tag v0.x.x && git push --tags`.
+```bash
+cd apps/cli
+npm whoami                   # logged in as correct account
+pnpm run release             # build + typecheck + test + publish
+```
 
-## npm registry
+## Post-publish verification
 
-- [ ] `npm whoami` — logged in as correct account.
-- [ ] `npm view create-omnix` — correct latest version.
-- [ ] `npx create-omnix --version` — matches.
+- [ ] `npm view omnix version` — shows new version
+- [ ] `npm install -g omnix@latest && omnix --version` — binary version matches
+- [ ] `npx omnix@latest --version` — npx also picks up new version
+- [ ] GitHub release created with the CHANGELOG entry
 
-## Post-publish
+## Git
 
-- [ ] `npx create-omnix init --dry-run` — works from npm.
-- [ ] GitHub release created with changelog entry.
+- [ ] `git tag v0.x.x && git push --tags`

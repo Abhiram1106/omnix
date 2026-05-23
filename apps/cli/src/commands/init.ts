@@ -28,7 +28,12 @@ export interface InitOptions {
 }
 
 export async function runInit(opts: InitOptions): Promise<void> {
-  const copyOpts = { dest: opts.cwd, force: opts.force, dryRun: opts.dryRun };
+  const copyOpts = {
+    dest: opts.cwd,
+    force: opts.force,
+    dryRun: opts.dryRun,
+    tokens: { VAULT_DIR: VAULT_DIR },
+  };
 
   logger.header("Omnix — Init");
 
@@ -93,17 +98,37 @@ export async function runInit(opts: InitOptions): Promise<void> {
     copyOpts
   );
 
-  // Seed error-memory + anti-patterns
+  // Seed error-memory.md
   await writeFile(
     path.join(opts.cwd, VAULT_DIR, "03-ERRORS", "error-memory.md"),
-    `# Error Memory\n\n<!-- Errors will be recorded here. Use the error-entry template. -->\n`,
+    `# Error Memory\n\n> Append-only bug log. Never edit existing entries.\n> Use the error-entry template in templates/.\n\n<!-- First entry will appear here. -->\n`,
     copyOpts
   );
+
+  // Seed anti-patterns.md from template (has header + instructions)
+  await copyTemplate("vault/03-ERRORS/anti-patterns.md", `${VAULT_DIR}/03-ERRORS/anti-patterns.md`, copyOpts);
+
+  // Seed decisions.md
   await writeFile(
-    path.join(opts.cwd, VAULT_DIR, "03-ERRORS", "anti-patterns.md"),
-    `# Anti-patterns\n\n<!-- Prevention rules promoted from recurring errors. -->\n`,
+    path.join(opts.cwd, VAULT_DIR, "04-DECISIONS", "decisions.md"),
+    `# Decisions\n\n> Append-only ADR index. Never edit existing entries.\n> Use the decision-entry template in templates/.\n\n<!-- Decisions will appear here. -->\n`,
     copyOpts
   );
+
+  // Seed session-continuity.md from template
+  await copyTemplate("vault/templates/session-continuity.md", `${VAULT_DIR}/02-PROJECTS/session-continuity.md`, copyOpts);
+
+  // Seed vault-index.md (lightweight session lookup)
+  await writeFile(
+    path.join(opts.cwd, VAULT_DIR, "02-PROJECTS", "vault-index.md"),
+    `# Vault Index\n\n> Lightweight file lookup. See _INDEX.md for the full MOC.\n\n| File | Purpose |\n|------|--------|\n| 02-PROJECTS/project-context.md | Stack, constraints |\n| 02-PROJECTS/session-continuity.md | Rolling handoff |\n| 03-ERRORS/error-memory.md | Known bugs |\n| 04-DECISIONS/decisions.md | Decisions |\n`,
+    copyOpts
+  );
+
+  // Seed root vault files: _INDEX.md MOC + protocol files
+  await copyTemplate("vault/_INDEX.md", `${VAULT_DIR}/_INDEX.md`, copyOpts);
+  await copyTemplate("vault/MEMORY-READ-PROTOCOL.md", `${VAULT_DIR}/MEMORY-READ-PROTOCOL.md`, copyOpts);
+  await copyTemplate("vault/MEMORY-WRITE-PROTOCOL.md", `${VAULT_DIR}/MEMORY-WRITE-PROTOCOL.md`, copyOpts);
 
   // ---------- 1b. .omnix/ runtime directory ----------
   logger.header("Initializing .omnix/ runtime directory");
@@ -140,6 +165,23 @@ export async function runInit(opts: InitOptions): Promise<void> {
     for (const f of files) {
       await copyTemplate(f.src, f.dest, copyOpts);
     }
+  }
+
+  // ---------- 2b. Monorepo — per-package rules ----------
+  if (stack.isMonorepo && stack.monorepoPackages.length > 0) {
+    logger.header(`Monorepo detected (${stack.monorepoTool}) — generating per-package rules`);
+    for (const pkg of stack.monorepoPackages) {
+      const ruleFile = cwdPath(
+        opts.cwd,
+        `.claude/rules/packages/${pkg.name.replace(/\//g, "__")}.md`
+      );
+      if (!(await exists(ruleFile)) || opts.force) {
+        await writeFile(ruleFile, buildPackageRule(pkg, answers.projectName), copyOpts);
+      } else {
+        logger.dim(`  skip (exists) .claude/rules/packages/${pkg.name}.md`);
+      }
+    }
+    logger.success(`Per-package rules written to .claude/rules/packages/`);
   }
 
   // ---------- 3. Root AI files ----------
@@ -186,6 +228,9 @@ export async function runInit(opts: InitOptions): Promise<void> {
   logger.dim("  omnix doctor           — check installation health");
   logger.dim("  omnix detect           — list detected Omnix files");
   logger.dim("  omnix route \"<task>\"   — route a request to workflow + agents");
+  if (stack.isMonorepo) {
+    logger.dim("  omnix workspace        — list packages + per-package health");
+  }
   logger.blank();
   logger.dim("Open .obsidian-ai-memory/ in Obsidian for the memory brain.");
   logger.blank();
@@ -197,6 +242,8 @@ export async function runInit(opts: InitOptions): Promise<void> {
 const GITIGNORE_ENTRIES = [
   ".omnix/memory/",
   ".omnix/cache/",
+  ".claude/settings.local.json",
+  ".claude/CLAUDE.local.md",
 ];
 
 async function updateGitignore(cwd: string, dryRun: boolean): Promise<void> {
@@ -235,6 +282,32 @@ function buildProjectContext(name: string, stack: ReturnType<typeof detectStack>
 - Known Errors:
 - Do Not Repeat:
 - Next Steps:
+`;
+}
+
+function buildPackageRule(pkg: { name: string; path: string; type: string }, rootName: string): string {
+  return `# Package: ${pkg.name}
+
+- Root project: ${rootName}
+- Path: ${pkg.path}
+- Type: ${pkg.type}
+
+## Boundaries
+
+- Purpose:
+- Allowed imports (from other workspace packages):
+- NOT allowed to import:
+- Public API surface:
+
+## Test requirements
+
+- Minimum coverage target:
+- Test runner:
+- Integration test scope:
+
+## Notes
+
+<!-- Add package-specific constraints, known quirks, or conventions here -->
 `;
 }
 

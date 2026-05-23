@@ -8,11 +8,46 @@
 import path from "node:path";
 import fs from "fs-extra";
 import type { SkillHandler } from "../utils/skill-runner.js";
+import { detectStack } from "../utils/detect-stack.js";
 
 export const handler: SkillHandler = async ({ cwd, vaultRoot, dryRun }) => {
   const output: string[] = ["# Repo Scanner — Code Intelligence", ""];
 
-  const report = await scanRepo(cwd);
+  const stack = await detectStack(cwd);
+
+  // For monorepos: scan each package, then aggregate
+  const scanDirs: Array<{ label: string; dir: string }> = [];
+  if (stack.isMonorepo && stack.monorepoPackages.length > 0) {
+    for (const pkg of stack.monorepoPackages) {
+      scanDirs.push({ label: pkg.path, dir: path.join(cwd, pkg.path) });
+    }
+    output.push(`**Monorepo:** ${stack.monorepoTool} · ${stack.monorepoPackages.length} packages`);
+    output.push("");
+  } else {
+    scanDirs.push({ label: "root", dir: cwd });
+  }
+
+  const allHotspots: Array<{ path: string; lines: number }> = [];
+  const allTestGaps: string[] = [];
+  const allRisks: string[] = [];
+  const allEntryPoints: string[] = [];
+  let totalScore = 0;
+
+  for (const target of scanDirs) {
+    const report = await scanRepo(target.dir, target.label !== "root" ? target.label : undefined);
+    allEntryPoints.push(...report.entryPoints);
+    allHotspots.push(...report.hotspots);
+    allTestGaps.push(...report.testGaps);
+    allRisks.push(...report.risks);
+    totalScore += report.score;
+  }
+
+  allHotspots.sort((a, b) => b.lines - a.lines);
+  allHotspots.splice(15);
+
+  const avgScore = Math.round(totalScore / (scanDirs.length || 1));
+  const riskLevel = avgScore >= 80 ? "Low" : avgScore >= 60 ? "Medium" : "High";
+  const report = { score: avgScore, riskLevel, entryPoints: allEntryPoints, hotspots: allHotspots, testGaps: allTestGaps, risks: allRisks };
 
   output.push(`**Engineering Score:** ${report.score}/100`);
   output.push(`**Risk level:** ${report.riskLevel}`);
@@ -65,16 +100,18 @@ export const handler: SkillHandler = async ({ cwd, vaultRoot, dryRun }) => {
   };
 };
 
-async function scanRepo(cwd: string) {
+async function scanRepo(cwd: string, pathPrefix?: string) {
   let score = 100;
   const risks: string[] = [];
   const entryPoints: string[] = [];
   const hotspots: { path: string; lines: number }[] = [];
   const testGaps: string[] = [];
 
+  const label = pathPrefix ? `${pathPrefix}/` : "";
+
   // Entry points
   for (const p of ["src/index.ts", "src/main.ts", "index.ts", "main.ts", "bin/index.js", "app.py", "main.py"]) {
-    if (await fs.pathExists(path.join(cwd, p))) entryPoints.push(p);
+    if (await fs.pathExists(path.join(cwd, p))) entryPoints.push(`${label}${p}`);
   }
 
   // Hotspots
@@ -86,7 +123,7 @@ async function scanRepo(cwd: string) {
     for (const f of files) {
       try {
         const lines = (await fs.readFile(f, "utf8")).split("\n").length;
-        if (lines > 200) hotspots.push({ path: path.relative(cwd, f), lines });
+        if (lines > 200) hotspots.push({ path: `${label}${path.relative(cwd, f)}`, lines });
       } catch { /* skip */ }
     }
   }
@@ -118,7 +155,7 @@ async function scanRepo(cwd: string) {
         }
         if (hasTest) break;
       }
-      if (!hasTest) testGaps.push(path.relative(cwd, f));
+      if (!hasTest) testGaps.push(`${label}${path.relative(cwd, f)}`);
     }
   }
   if (testGaps.length > 10) { risks.push(`${testGaps.length} src files without tests`); score -= 15; }
@@ -132,8 +169,7 @@ async function scanRepo(cwd: string) {
     score -= 20;
   }
 
-  const riskLevel = score >= 80 ? "Low" : score >= 60 ? "Medium" : "High";
-  return { score: Math.max(0, score), riskLevel, entryPoints, hotspots, testGaps, risks };
+  return { score: Math.max(0, score), entryPoints, hotspots, testGaps, risks };
 }
 
 async function getFilesRec(dir: string, exts: string[]): Promise<string[]> {

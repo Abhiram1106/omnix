@@ -95,36 +95,68 @@ export async function runScan(opts: ScanOptions): Promise<void> {
 
   // Deep code intelligence scan
   if (opts.deep) {
-    const intel = await runCodeIntelligence(opts.cwd);
+    // For monorepos, scan each package separately and aggregate
+    const scanTargets: Array<{ label: string; dir: string }> = [];
+    if (stack.isMonorepo && stack.monorepoPackages.length > 0) {
+      for (const pkg of stack.monorepoPackages) {
+        scanTargets.push({ label: pkg.path, dir: path.join(opts.cwd, pkg.path) });
+      }
+    } else {
+      scanTargets.push({ label: "root", dir: opts.cwd });
+    }
+
+    const allHotspots: Array<{ path: string; lines: number }> = [];
+    const allTestGaps: string[] = [];
+    const allRisks: string[] = [];
+    const allEntryPoints: string[] = [];
+
+    for (const target of scanTargets) {
+      const intel = await runCodeIntelligence(target.dir, target.label !== "root" ? target.label : undefined);
+      allEntryPoints.push(...intel.entryPoints);
+      allHotspots.push(...intel.hotspots);
+      allTestGaps.push(...intel.testGaps);
+      allRisks.push(...intel.risks);
+    }
+
+    allHotspots.sort((a, b) => b.lines - a.lines);
+    allHotspots.splice(15);
+
+    const combinedIntel: CodeIntelligence = {
+      entryPoints: allEntryPoints,
+      hotspots: allHotspots,
+      testGaps: allTestGaps,
+      risks: allRisks,
+    };
+
     if (!opts.json) {
       logger.blank();
-      logger.header("Code Intelligence");
-      if (intel.entryPoints.length > 0) {
+      logger.header(stack.isMonorepo ? `Code Intelligence (${scanTargets.length} packages)` : "Code Intelligence");
+      if (combinedIntel.entryPoints.length > 0) {
         logger.dim("  Entry points:");
-        for (const ep of intel.entryPoints) logger.dim(`    ${ep}`);
+        for (const ep of combinedIntel.entryPoints) logger.dim(`    ${ep}`);
       }
-      if (intel.hotspots.length > 0) {
+      if (combinedIntel.hotspots.length > 0) {
         logger.blank();
         logger.dim("  Hotspots (largest files):");
-        for (const h of intel.hotspots) {
+        for (const h of combinedIntel.hotspots) {
           const warning = h.lines > 500 ? " ⚠ consider splitting" : "";
           logger.dim(`    ${h.path}  (${h.lines} lines)${warning}`);
         }
       }
-      if (intel.testGaps.length > 0) {
+      if (combinedIntel.testGaps.length > 0) {
         logger.blank();
-        logger.warn(`  Test gaps (${intel.testGaps.length} src files without tests):`);
-        for (const g of intel.testGaps.slice(0, 5)) logger.dim(`    ${g}`);
-        if (intel.testGaps.length > 5) logger.dim(`    ... and ${intel.testGaps.length - 5} more`);
+        logger.warn(`  Test gaps (${combinedIntel.testGaps.length} src files without tests):`);
+        for (const g of combinedIntel.testGaps.slice(0, 5)) logger.dim(`    ${g}`);
+        if (combinedIntel.testGaps.length > 5) logger.dim(`    ... and ${combinedIntel.testGaps.length - 5} more`);
       }
-      if (intel.risks.length > 0) {
+      if (combinedIntel.risks.length > 0) {
         logger.blank();
         logger.warn("  Risks detected:");
-        for (const r of intel.risks) logger.dim(`    ${r}`);
+        for (const r of combinedIntel.risks) logger.dim(`    ${r}`);
       }
     }
     if (opts.write && memoryPresent) {
-      await writeCodeIntelligenceToVault(opts.cwd, intel);
+      await writeCodeIntelligenceToVault(opts.cwd, combinedIntel);
     }
   }
 
@@ -144,11 +176,13 @@ interface CodeIntelligence {
   risks: string[];
 }
 
-async function runCodeIntelligence(cwd: string): Promise<CodeIntelligence> {
+async function runCodeIntelligence(cwd: string, pathPrefix?: string): Promise<CodeIntelligence> {
   const entryPoints: string[] = [];
   const hotspots: Array<{ path: string; lines: number }> = [];
   const testGaps: string[] = [];
   const risks: string[] = [];
+
+  const label = pathPrefix ? `${pathPrefix}/` : "";
 
   // Find entry points (common patterns)
   const entryPatterns = [
@@ -157,7 +191,7 @@ async function runCodeIntelligence(cwd: string): Promise<CodeIntelligence> {
     "bin/index.js", "bin/cli.js",
   ];
   for (const p of entryPatterns) {
-    if (await exists(path.join(cwd, p))) entryPoints.push(p);
+    if (await exists(path.join(cwd, p))) entryPoints.push(`${label}${p}`);
   }
 
   // Find largest files (hotspots) — scan src/ and common dirs
@@ -171,7 +205,7 @@ async function runCodeIntelligence(cwd: string): Promise<CodeIntelligence> {
         const content = await fs.readFile(f, "utf8");
         const lines = content.split("\n").length;
         if (lines > 200) {
-          hotspots.push({ path: path.relative(cwd, f), lines });
+          hotspots.push({ path: `${label}${path.relative(cwd, f)}`, lines });
         }
       } catch { /* skip */ }
     }
@@ -208,7 +242,7 @@ async function runCodeIntelligence(cwd: string): Promise<CodeIntelligence> {
         }
         if (hasTest) break;
       }
-      if (!hasTest) testGaps.push(relSrc);
+      if (!hasTest) testGaps.push(`${label}${relSrc}`);
     }
   }
 

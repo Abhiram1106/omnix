@@ -2,106 +2,67 @@
 
 How to publish `omnix` to npm.
 
-## Before first publish
+## Prerequisites
 
-### 1. Choose and claim the package name
+### npm login
 
 ```bash
-npm view omnix           # check if taken
-npm view create-omnix    # check if taken (secondary alias)
+npm whoami          # check if already logged in
+npm login           # if not
 ```
 
-If `omnix` is taken, edit `apps/cli/package.json` → `name` field before proceeding.
-
-### 2. Create an npm account (if needed)
-
-```
-https://www.npmjs.com/signup
-```
-
-### 3. Set up GitHub secrets (for CI)
+### GitHub secret (for CI)
 
 In your GitHub repo → Settings → Secrets and variables → Actions:
 
-| Secret | Value |
-|---|---|
-| `NPM_TOKEN` | From npmjs.com → Access Tokens → Automation token |
+| Secret      | Value                                        |
+|-------------|----------------------------------------------|
+| `NPM_TOKEN` | npmjs.com → Access Tokens → Automation token |
 
-### 4. Update TODO fields in apps/cli/package.json
-
-```json
-"author": "Your Name <your@email.com>",
-"repository": { "url": "https://github.com/YOUR_ORG/omnix.git" },
-"homepage": "https://github.com/YOUR_ORG/omnix#readme",
-"bugs": { "url": "https://github.com/YOUR_ORG/omnix/issues" }
-```
-
-## Local publish workflow
+## Release workflow (recommended)
 
 ```bash
-# 1. Install deps
-pnpm install
+cd apps/cli
 
-# 2. Typecheck
-pnpm typecheck
+# 1. Bump version
+npm version patch   # 0.2.1 → 0.2.2  (bug fixes)
+npm version minor   # 0.2.x → 0.3.0  (new features)
+npm version major   # 0.x.x → 1.0.0  (breaking changes)
 
-# 3. Build
-pnpm build
+# 2. One-command release: build + typecheck + 126 tests + publish
+pnpm run release
+```
 
-# 4. Dry-run pack (shows what would be published)
-pnpm pack:dry
+`pnpm run release` runs: `build → typecheck → test → npm publish --access public`
+
+## Manual publish
+
+```bash
+cd apps/cli
+
+pnpm run build
+pnpm run typecheck
+pnpm test
+
+# Dry run — shows tarball contents without uploading
+pnpm run publish:dry
+
+# Publish
+pnpm run publish:npm
 # or
-cd apps/cli && npm pack --dry-run
-
-# 5. Inspect the tarball contents
-cd apps/cli && npm pack
-tar -tzf omnix-0.1.0.tgz
-
-# 6. Test locally before publishing
-cd /tmp && mkdir test-proj && cd test-proj && npm init -y
-npm install /path/to/omnix/apps/cli/omnix-0.1.0.tgz
-npx omnix --help
-npx omnix init --dry-run
-omnix scan
-omnix route "fix the login bug"
-
-# 7. Publish (first time needs --access public)
-cd apps/cli
-npm login
-npm whoami
 npm publish --access public
-
-# 8. Verify
-npx omnix --version
-npx omnix --help
-npx create-omnix --help   # alias also works
 ```
 
-## Subsequent releases
+## Verify after publish
 
 ```bash
-# Bump version (patch | minor | major)
-cd apps/cli
-npm version patch   # 0.1.0 → 0.1.1
-
-# Build + publish
-cd ../..
-pnpm build
-cd apps/cli
-npm publish
+npm view omnix version          # registry shows new version
+npm install -g omnix@latest     # update global install
+omnix --version                 # binary reports correct version
+npx omnix@latest --version      # npx also picks it up
 ```
 
-Or trigger the GitHub Actions release workflow manually (workflow_dispatch).
-
-## Scoped vs unscoped
-
-- `omnix` — unscoped, clean and direct. `npx omnix` works naturally.
-- `create-omnix` — the `npx create-*` convention alias (also registered as a bin).
-- `@yourorg/omnix` — scoped; requires `--access public` every time.
-
-**Recommendation:** publish as `omnix` (unscoped). Both `npx omnix` and `npx create-omnix` will work via the bin aliases.
-
-## What gets published
+## What gets published (90 files, ~1.8 MB unpacked)
 
 Controlled by `files` in `apps/cli/package.json`:
 
@@ -109,15 +70,37 @@ Controlled by `files` in `apps/cli/package.json`:
 "files": ["dist", "bin", "templates", "README.md", "LICENSE"]
 ```
 
-The `dist/index.js` bundle includes all runtime deps (tsup bundles them). Users do not need to install anything separately.
+The `dist/index.js` bundle includes all runtime deps (tsup bundles them).
+Users do not need to install anything separately — `npx omnix` works with zero deps.
 
-## Safety checks before publish
+Key tarball contents:
 
-- [ ] `pnpm typecheck` passes.
-- [ ] `pnpm build` completes cleanly.
-- [ ] `npm pack --dry-run` shows `dist/`, `bin/`, `templates/`.
-- [ ] `bin/omnix.js` starts with `#!/usr/bin/env node`.
-- [ ] Templates are in the tarball: `tar -tzf *.tgz | grep templates`.
-- [ ] No `.env`, `node_modules`, or Obsidian user data in the tarball.
-- [ ] CHANGELOG.md updated.
-- [ ] Version bumped in `apps/cli/package.json`.
+```text
+dist/index.js                         # bundled CLI (~600 KB)
+bin/omnix.js                          # entry shim
+templates/adapters/generic/AGENTS.md  # universal contract
+templates/adapters/claude/.claude/    # full .claude/ structure
+templates/adapters/cursor/            # 15 files incl. context packs + runbooks
+templates/adapters/windsurf/          # full rules
+templates/adapters/cline/             # full instructions
+templates/adapters/roo/               # full instructions + mode table
+templates/adapters/continue/          # full config.yaml snippets
+templates/vault/                      # 11 folders + protocol files + templates
+```
+
+## Scoped vs unscoped
+
+- `omnix` — unscoped, `npx omnix` and `npx create-omnix` both work via bin aliases.
+- `@yourorg/omnix` — scoped; requires `--access public` every time.
+
+## Pre-publish checklist
+
+Run through [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md) before every publish.
+
+Key gates:
+
+- [ ] `pnpm typecheck` — zero errors
+- [ ] `pnpm test` — 126/126 passing
+- [ ] `pnpm run publish:dry` — tarball contains `dist/`, `bin/`, `templates/`
+- [ ] `omnix --version` matches `apps/cli/package.json` version after build
+- [ ] CHANGELOG.md updated with the new version entry

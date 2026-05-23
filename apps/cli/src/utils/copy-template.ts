@@ -10,6 +10,8 @@ export interface CopyOptions {
   force?: boolean;
   /** Print what would happen without writing. */
   dryRun?: boolean;
+  /** Token substitutions applied to text file content (e.g. {{VAULT_DIR}}). */
+  tokens?: Record<string, string>;
 }
 
 export interface CopyResult {
@@ -82,7 +84,24 @@ async function copySingleFile(
   }
 
   await fs.ensureDir(path.dirname(dst));
-  await fs.copyFile(src, dst);
+
+  // Apply token substitutions for text files
+  if (opts.tokens && Object.keys(opts.tokens).length > 0) {
+    const textExts = [".md", ".mdc", ".json", ".txt", ".yaml", ".yml", ".ts", ".js"];
+    const ext = path.extname(dst).toLowerCase();
+    if (textExts.includes(ext)) {
+      let content = await fs.readFile(src, "utf8");
+      for (const [token, value] of Object.entries(opts.tokens)) {
+        content = content.replaceAll(`{{${token}}}`, value);
+      }
+      await fs.writeFile(dst, content, "utf8");
+    } else {
+      await fs.copyFile(src, dst);
+    }
+  } else {
+    await fs.copyFile(src, dst);
+  }
+
   logger.success(`  ${dst}`);
   result.written.push(dst);
   return result;

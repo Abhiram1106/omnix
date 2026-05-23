@@ -1,11 +1,17 @@
 ---
-description: Backend engineering rules
+description: Backend rules for API services, server code, and data access layers
 globs:
   - "server/**"
   - "api/**"
   - "lib/**"
   - "src/server/**"
   - "src/api/**"
+  - "apps/api/**"
+  - "services/**/*.ts"
+  - "packages/server/**"
+  - "**/*.controller.ts"
+  - "**/*.service.ts"
+  - "**/*.repository.ts"
 alwaysApply: false
 ---
 
@@ -21,3 +27,9 @@ Source: `packages/core/standards/backend.md`
 - Don't block requests on slow work — enqueue.
 - Config from env vars, validated at startup. Fail fast on missing required config.
 - Structured logs, RED metrics, OpenTelemetry-compatible tracing.
+- All DB mutations touching > 1 table must be in a transaction.
+- Never trust client-supplied IDs for ownership — verify ownership in DB.
+- Rate-limit all public endpoints.
+- Parameterize all DB queries — no string interpolation.
+
+Load `.cursor/context/backend-context.md` for service map and area conventions.

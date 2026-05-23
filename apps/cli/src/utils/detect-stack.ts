@@ -32,7 +32,11 @@ export interface StackInfo {
   hasDrizzle: boolean;
   hasOpenAPI: boolean;
   aiTools: string[];
-  /** Sub-packages in monorepos (apps/* and packages/*). */
+  /** Whether the project is a monorepo. */
+  isMonorepo: boolean;
+  /** Which monorepo tool was detected. */
+  monorepoTool: "turbo" | "nx" | "lerna" | "pnpm-workspaces" | "none";
+  /** Sub-packages in monorepos (apps/*, packages/*, libs/*, services/*, tools/*). */
   monorepoPackages: MonorepoPackage[];
   raw: Record<string, boolean>;
 }
@@ -77,6 +81,9 @@ export async function detectStack(cwd: string): Promise<StackInfo> {
     hasOpenApiJson,
     hasOpenApiYaml,
     hasPlaywright,
+    hasTurbo,
+    hasNx,
+    hasLerna,
   ] = await Promise.all([
     has(cwd, "package.json"),
     has(cwd, "pyproject.toml"),
@@ -107,6 +114,9 @@ export async function detectStack(cwd: string): Promise<StackInfo> {
     has(cwd, "playwright.config.ts").then((v) =>
       v ? v : has(cwd, "playwright.config.js")
     ),
+    has(cwd, "turbo.json"),
+    has(cwd, "nx.json"),
+    has(cwd, "lerna.json"),
   ]);
 
   const languages: string[] = [];
@@ -176,7 +186,7 @@ export async function detectStack(cwd: string): Promise<StackInfo> {
 
   // Project type
   let projectType: ProjectType = "unknown";
-  if (hasPnpmWs) projectType = "monorepo";
+  if (hasPnpmWs || hasTurbo || hasNx || hasLerna) projectType = "monorepo";
   else if (hasNext) projectType = "fullstack-saas";
   else if (hasViteConfig && !hasFastify && !hasExpress) projectType = "frontend-only";
   else if ((hasFastify || hasExpress || hasHono) && !hasReact) projectType = "backend-api";
@@ -185,10 +195,10 @@ export async function detectStack(cwd: string): Promise<StackInfo> {
   else if (hasPlaywright) projectType = "browser-scraping";
   else if (hasPyproject || hasRequirements) projectType = "backend-api";
 
-  // Enumerate monorepo sub-packages (apps/* and packages/*)
+  // Enumerate monorepo sub-packages
   const monorepoPackages: MonorepoPackage[] = [];
   if (projectType === "monorepo") {
-    for (const parentDir of ["apps", "packages"]) {
+    for (const parentDir of ["apps", "packages", "libs", "services", "tools"]) {
       const parentPath = path.join(cwd, parentDir);
       if (await has(cwd, parentDir)) {
         const entries = await fs.readdir(parentPath, { withFileTypes: true }).catch(() => []);
@@ -218,6 +228,13 @@ export async function detectStack(cwd: string): Promise<StackInfo> {
     }
   }
 
+  const isMonorepo = projectType === "monorepo";
+  let monorepoTool: StackInfo["monorepoTool"] = "none";
+  if (hasTurbo) monorepoTool = "turbo";
+  else if (hasNx) monorepoTool = "nx";
+  else if (hasLerna) monorepoTool = "lerna";
+  else if (hasPnpmWs) monorepoTool = "pnpm-workspaces";
+
   return {
     projectType,
     languages,
@@ -232,6 +249,8 @@ export async function detectStack(cwd: string): Promise<StackInfo> {
     hasDrizzle,
     hasOpenAPI: hasOpenApiJson || hasOpenApiYaml,
     aiTools,
+    isMonorepo,
+    monorepoTool,
     monorepoPackages,
     raw: {
       hasPkg,

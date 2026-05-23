@@ -1,13 +1,15 @@
 ---
-description: Frontend engineering rules
+description: Frontend rules for UI components, pages, and client-side code
 globs:
   - "**/*.tsx"
   - "**/*.jsx"
-  - "**/*.ts"
   - "**/*.css"
   - "**/*.module.css"
   - "app/**"
-  - "src/**"
+  - "src/components/**"
+  - "src/pages/**"
+  - "apps/web/**"
+  - "packages/ui/**"
 alwaysApply: false
 ---
 
@@ -23,3 +25,8 @@ Source: `packages/core/standards/frontend.md`
 - Test with Testing Library; query by role.
 - Measure before optimizing.
 - No layout shift: reserve space for images, async content, fonts.
+- Co-locate component files: `Component.tsx`, `Component.test.tsx`, `Component.module.css`.
+- No props drilling past depth 2 — use context or state library.
+- `useEffect` dependencies must be exhaustive.
+
+Load `.cursor/context/frontend-context.md` for component library and design system conventions.

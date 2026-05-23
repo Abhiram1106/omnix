@@ -22,6 +22,7 @@ import { runDiff } from "./commands/diff.js";
 import { runHooks } from "./commands/hooks.js";
 import { runVault } from "./commands/vault.js";
 import { runTutorial } from "./commands/tutorial.js";
+import { runWorkspace } from "./commands/workspace.js";
 import { runSkill } from "./utils/skill-runner.js";
 import { logger } from "./utils/logger.js";
 
@@ -50,7 +51,8 @@ process.on("unhandledRejection", (reason: unknown) => {
   process.exit(1);
 });
 
-const VERSION = "0.1.0";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const VERSION: string = (require("../package.json") as { version: string }).version;
 
 const program = new Command();
 
@@ -462,6 +464,16 @@ program
   .option("--json", "output as JSON", false)
   .action(async (opts: { fix: boolean; json: boolean }) => {
     await runCheckSecrets({ cwd: process.cwd(), fix: opts.fix, json: opts.json });
+  });
+
+// ── workspace ─────────────────────────────────────────────────────────────────
+program
+  .command("workspace")
+  .description("List all monorepo packages with per-package health scores")
+  .option("--health", "show detailed health breakdown per package", false)
+  .option("--json", "output as JSON", false)
+  .action(async (opts: { health: boolean; json: boolean }) => {
+    await runWorkspace({ cwd: process.cwd(), health: opts.health, json: opts.json });
   });
 
 // ── default: bare `npx create-omnix` with no args → init ──────────

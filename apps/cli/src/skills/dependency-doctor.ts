@@ -10,6 +10,7 @@ import path from "node:path";
 import { execSync } from "node:child_process";
 import fs from "fs-extra";
 import type { SkillHandler } from "../utils/skill-runner.js";
+import { detectStack } from "../utils/detect-stack.js";
 
 /**
  * Run a command and capture stdout. Returns empty string on failure.
@@ -34,6 +35,14 @@ function detectPm(cwd: string): "npm" | "pnpm" | "yarn" | null {
 
 export const handler: SkillHandler = async ({ cwd, vaultRoot, dryRun }) => {
   const output: string[] = ["# Dependency Doctor", ""];
+
+  const stack = await detectStack(cwd);
+
+  // For monorepos: show which packages will be scanned
+  if (stack.isMonorepo && stack.monorepoPackages.length > 0) {
+    output.push(`**Monorepo** (${stack.monorepoTool}) — scanning ${stack.monorepoPackages.length} packages + root`);
+    output.push("");
+  }
 
   // Detect manifest
   const pkgPath = path.join(cwd, "package.json");
@@ -145,6 +154,26 @@ export const handler: SkillHandler = async ({ cwd, vaultRoot, dryRun }) => {
     output.push("");
     output.push("## Python dependencies");
     output.push("Run `pip-audit` for vulnerability scanning: `pip install pip-audit && pip-audit`");
+  }
+
+  // ── Monorepo: per-package audit summary ─────────────────────────────────────
+  if (stack.isMonorepo && stack.monorepoPackages.length > 0) {
+    output.push("");
+    output.push("## Per-package dependency summary");
+    output.push("");
+    for (const pkg of stack.monorepoPackages) {
+      const pkgDir = path.join(cwd, pkg.path);
+      const pkgJsonPath = path.join(pkgDir, "package.json");
+      if (!(await fs.pathExists(pkgJsonPath))) continue;
+      const pkgJson = await fs.readJSON(pkgJsonPath).catch(() => ({})) as {
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+        version?: string;
+      };
+      const deps = Object.keys(pkgJson.dependencies ?? {}).length;
+      const devDeps = Object.keys(pkgJson.devDependencies ?? {}).length;
+      output.push(`- **${pkg.name}** (\`${pkg.path}\`): ${deps} prod, ${devDeps} dev deps`);
+    }
   }
 
   // Write findings to vault
